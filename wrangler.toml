@@ -1,0 +1,8 @@
+name = "attendance-system"
+compatibility_date = "2024-03-01"
+
+# D1 데이터베이스 바인딩
+[[d1_databases]]
+binding = "DB"
+database_name = "attendance-db" # Cloudflare 대시보드에서 생성한 D1 데이터베이스 이름
+database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" # D1 생성 후 제공받은 ID 값 (선택적 기입)
