@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>QR 코드 생성기</title>
+    <link rel="stylesheet" href="/css/admin.css">
+    <style>
+        .qr-container { text-align: center; margin-top: 40px; }
+        #qrImage { margin-top: 20px; border: 10px solid white; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <h1>날짜별 QR 코드 생성</h1>
+        <div class="qr-container">
+            <input type="date" id="qrDate">
+            <button class="btn-admin" onclick="generateQR()">QR 코드 생성</button>
+            <div id="qrDisplay">
+                <img id="qrImage" src="" alt="QR코드" style="display:none;">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function generateQR() {
+            const date = document.getElementById('qrDate').value;
+            if (!date) { alert('날짜를 선택하세요'); return; }
+
+            // 실제 출근 화면 주소 (easyq.pages.dev 사용)
+            const baseUrl = "https://easyq.pages.dev/";
+            const fullUrl = `${baseUrl}?date=${date}`;
+            
+            // 구글 Chart API를 이용한 QR 생성
+            const qrApi = `https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=${encodeURIComponent(fullUrl)}`;
+            
+            const img = document.getElementById('qrImage');
+            img.src = qrApi;
+            img.style.display = 'inline-block';
+        }
+    </script>
+</body>
+</html>
