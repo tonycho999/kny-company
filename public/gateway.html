@@ -1,0 +1,15 @@
+<script>
+    // 1. QR에서 전달받은 날짜 추출
+    const urlParams = new URLSearchParams(window.location.search);
+    const date = urlParams.get('date');
+
+    if (date) {
+        // 2. 날짜를 브라우저의 임시 저장소(세션)에 저장
+        sessionStorage.setItem('attendanceDate', date);
+        // 3. 파라미터 없는 깔끔한 주소로 이동
+        window.location.href = "/";
+    } else {
+        // 날짜 없이 접속한 경우
+        window.location.href = "/";
+    }
+</script>
