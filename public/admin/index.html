@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 대시보드 - 출퇴근 관리</title>
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <h1>출퇴근 기록 관리</h1>
+        
+        <div class="nav-links">
+            <a href="/admin/index.html" style="text-decoration: underline; color: #2c3e50;">📅 출퇴근 기록 조회</a>
+            <a href="/admin/settings.html">⚙️ 직원 관리 설정</a>
+        </div>
+
+        <div class="header-controls">
+            <div>
+                <label for="datePicker" style="font-weight: bold; margin-right: 10px;">조회 날짜 선택:</label>
+                <input type="date" id="datePicker">
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>사원번호</th>
+                    <th>이름</th>
+                    <th>연락처</th>
+                    <th>출근 시간</th>
+                    <th>퇴근 시간</th>
+                </tr>
+            </thead>
+            <tbody id="attendance-body">
+                <tr>
+                    <td colspan="5" style="text-align: center; color: #7f8c8d;">날짜를 선택하면 기록이 표시됩니다.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script src="/js/admin.js"></script>
+</body>
+</html>
