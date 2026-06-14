@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>사내 출퇴근 등록 시스템</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #f5f7fa; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); text-align: center; width: 90%; max-width: 400px; }
+        h2 { color: #2c3e50; margin-bottom: 5px; }
+        .team-badge { display: inline-block; background: #34495e; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; margin-bottom: 25px; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; box-sizing: border-box; text-align: center; }
+        .btn-group { display: flex; gap: 10px; }
+        button { flex: 1; padding: 14px; border: none; border-radius: 6px; font-size: 1.1rem; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; }
+        #btn-in { background-color: #2ecc71; }
+        #btn-out { background-color: #e74c3c; }
+        button:hover { opacity: 0.9; }
+        #message { margin-top: 20px; font-weight: bold; min-height: 24px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>출퇴근 기록 등록</h2>
+        <div class="team-badge" id="teamDisplay">인증 부서 로딩 중...</div>
+        
+        <input type="password" id="employeeId" placeholder="사원번호를 입력하세요" autocomplete="off">
+        
+        <div class="btn-group">
+            <button id="btn-in">출근</button>
+            <button id="btn-out">퇴근</button>
+        </div>
+        <div id="message"></div>
+    </div>
+    <script src="/js/app.js"></script>
+</body>
+</html>
