@@ -11,6 +11,10 @@ async function handleAttendance(type) {
     const messageDiv = document.getElementById('message');
     const employeeId = employeeIdInput.value.trim();
     
+    // URL에서 QR 날짜 파라미터 추출
+    const urlParams = new URLSearchParams(window.location.search);
+    const date = urlParams.get('date');
+    
     if (!employeeId) {
         messageDiv.style.color = '#e74c3c';
         messageDiv.innerText = '⚠️ 사원번호를 입력해주세요.';
@@ -21,11 +25,10 @@ async function handleAttendance(type) {
     messageDiv.innerText = '처리 중...';
 
     try {
-        // Cloudflare Pages Function API 호출
         const response = await fetch('/api/attendance', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ employeeId, type })
+            body: JSON.stringify({ employeeId, type, date })
         });
 
         const result = await response.json();
@@ -33,7 +36,7 @@ async function handleAttendance(type) {
         if (response.ok) {
             messageDiv.style.color = '#2ecc71';
             messageDiv.innerText = `✅ ${result.name}님, ${type === 'in' ? '출근' : '퇴근'} 처리가 완료되었습니다.`;
-            employeeIdInput.value = ''; // 입력란 초기화
+            employeeIdInput.value = '';
         } else {
             messageDiv.style.color = '#e74c3c';
             messageDiv.innerText = `❌ 오류: ${result.error || '기록 실패'}`;
