@@ -1,0 +1,95 @@
+* { 
+    box-sizing: border-box; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+}
+
+body { 
+    background-color: #f8f9fa; 
+    margin: 0; 
+    padding: 30px; 
+    color: #333;
+}
+
+.admin-container { 
+    max-width: 1100px; 
+    margin: 0 auto; 
+    background: white; 
+    padding: 2.5rem; 
+    border-radius: 12px; 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+}
+
+h1 { 
+    color: #2c3e50; 
+    border-bottom: 2px solid #ecf0f1; 
+    padding-bottom: 15px; 
+    margin-top: 0;
+}
+
+.header-controls { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 20px; 
+    margin-top: 20px;
+}
+
+input[type="date"] { 
+    padding: 10px; 
+    border: 1px solid #ced4da; 
+    border-radius: 6px; 
+    font-size: 1rem;
+}
+
+table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    margin-top: 15px; 
+}
+
+th, td { 
+    padding: 15px 12px; 
+    text-align: left; 
+    border-bottom: 1px solid #ecf0f1; 
+}
+
+th { 
+    background-color: #f8f9fa; 
+    color: #495057; 
+    font-weight: 600; 
+}
+
+tr:hover { 
+    background-color: #f1f3f5; 
+}
+
+.nav-links {
+    margin-bottom: 20px;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: #3498db;
+    margin-right: 15px;
+    font-weight: bold;
+}
+
+.nav-links a:hover {
+    text-decoration: underline;
+}
+
+/* 관리자용 버튼들 (설정 등) */
+.btn-admin { 
+    background-color: #3498db; 
+    color: white; 
+    padding: 10px 20px; 
+    text-decoration: none; 
+    border-radius: 6px; 
+    font-size: 1rem; 
+    border: none;
+    cursor: pointer;
+}
+
+.btn-danger {
+    background-color: #e74c3c;
+}
