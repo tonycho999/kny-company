@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="/css/admin.css">
     <style>
         .qr-container { text-align: center; margin-top: 40px; }
-        #qrImage { margin-top: 20px; border: 10px solid white; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+        #qrImage { margin-top: 20px; border: 10px solid white; box-shadow: 0 0 20px rgba(0,0,0,0.1); width: 300px; height: 300px; }
     </style>
 </head>
 <body>
@@ -26,12 +26,12 @@
             const date = document.getElementById('qrDate').value;
             if (!date) { alert('날짜를 선택하세요'); return; }
 
-            // 실제 출근 화면 주소 (easyq.pages.dev 사용)
-            const baseUrl = "https://easyq.pages.dev/";
+            // 현재 배포 도메인으로 자동 설정
+            const baseUrl = window.location.origin + "/";
             const fullUrl = `${baseUrl}?date=${date}`;
             
-            // 구글 Chart API를 이용한 QR 생성
-            const qrApi = `https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=${encodeURIComponent(fullUrl)}`;
+            // 안정적인 외부 QR 생성 API로 변경 (goqr.me)
+            const qrApi = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(fullUrl)}`;
             
             const img = document.getElementById('qrImage');
             img.src = qrApi;
