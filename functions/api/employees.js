@@ -3,49 +3,45 @@ export async function onRequest(context) {
     const url = new URL(request.url);
     const method = request.method;
 
+    if (!env.DB) {
+        return Response.json({ error: "데이터베이스 바인딩(DB)이 설정되지 않았습니다." }, { status: 500 });
+    }
+
     try {
-        // [GET] 직원 목록 조회
         if (method === "GET") {
             const { results } = await env.DB.prepare(
-                "SELECT employee_id as employeeId, name, contact, status FROM Employees ORDER BY employee_id ASC"
+                "SELECT employee_id as employeeId, name, contact, team, status FROM Employees ORDER BY team ASC, employee_id ASC"
             ).all();
             return Response.json(results);
         }
 
-        // [POST] 신규 직원 추가
         if (method === "POST") {
-            const { employeeId, name, contact } = await request.json();
+            const { employeeId, name, contact, team } = await request.json();
             
-            // 중복 확인
             const exist = await env.DB.prepare("SELECT * FROM Employees WHERE employee_id = ?").bind(employeeId).first();
             if (exist) {
                 return Response.json({ error: "이미 존재하는 사원번호입니다." }, { status: 400 });
             }
 
             await env.DB.prepare(
-                "INSERT INTO Employees (employee_id, name, contact) VALUES (?, ?, ?)"
-            ).bind(employeeId, name, contact).run();
-            
+                "INSERT INTO Employees (employee_id, name, contact, team) VALUES (?, ?, ?, ?)"
+            ).bind(employeeId, name, contact, team).run();
             return Response.json({ success: true });
         }
 
-        // [PUT] 직원 상태 수정 (재직 <-> 퇴사)
         if (method === "PUT") {
             const { employeeId, status } = await request.json();
             await env.DB.prepare(
                 "UPDATE Employees SET status = ? WHERE employee_id = ?"
             ).bind(status, employeeId).run();
-            
             return Response.json({ success: true });
         }
 
-        // [DELETE] 직원 완전 삭제
         if (method === "DELETE") {
             const employeeId = url.searchParams.get("employeeId");
             await env.DB.prepare(
                 "DELETE FROM Employees WHERE employee_id = ?"
             ).bind(employeeId).run();
-            
             return Response.json({ success: true });
         }
 
