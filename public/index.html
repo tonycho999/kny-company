@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>출퇴근 체크</title>
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+    <div class="container">
+        <h1>근태 관리</h1>
+        <p>사원번호를 입력하고 버튼을 눌러주세요.</p>
+        
+        <input type="text" id="employeeId" placeholder="사원번호 입력" required autocomplete="off">
+        
+        <div class="button-group">
+            <button id="btn-in" class="btn btn-in">출근</button>
+            <button id="btn-out" class="btn btn-out">퇴근</button>
+        </div>
+        
+        <div id="message" class="message"></div>
+    </div>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>
