@@ -2,35 +2,224 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>사내 출퇴근 등록 시스템</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KNY Company - 출퇴근 등록 시스템</title>
     <style>
-        body { font-family: 'Malgun Gothic', sans-serif; background-color: #f5f7fa; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); text-align: center; width: 90%; max-width: 400px; }
-        h2 { color: #2c3e50; margin-bottom: 5px; }
-        .team-badge { display: inline-block; background: #34495e; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; margin-bottom: 25px; }
-        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; box-sizing: border-box; text-align: center; }
-        .btn-group { display: flex; gap: 10px; }
-        button { flex: 1; padding: 14px; border: none; border-radius: 6px; font-size: 1.1rem; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; }
-        #btn-in { background-color: #2ecc71; }
-        #btn-out { background-color: #e74c3c; }
-        button:hover { opacity: 0.9; }
-        #message { margin-top: 20px; font-weight: bold; min-height: 24px; }
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f5f6fa;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; margin: 0;
+        }
+        .container {
+            background: white; padding: 40px 30px; border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center;
+            max-width: 400px; width: 100%; margin: 20px;
+        }
+        h1 { color: #2c3e50; margin-bottom: 25px; font-size: 24px; font-weight: bold; }
+        input[type="text"] {
+            width: 100%; padding: 14px; margin-bottom: 15px;
+            border: 1px solid #ddd; border-radius: 8px; font-size: 16px;
+            box-sizing: border-box; text-align: center;
+        }
+        input[type="text"]:focus { border-color: #3498db; outline: none; }
+        button {
+            width: 100%; padding: 14px; background-color: #3498db; color: white;
+            border: none; border-radius: 8px; font-size: 16px;
+            cursor: pointer; font-weight: bold; transition: background 0.2s;
+        }
+        button:hover { background-color: #2980b9; }
+        
+        /* 알림 메시지 스타일 */
+        .message { margin-top: 10px; font-size: 18px; font-weight: bold; line-height: 1.6; }
+        .success { color: #2ecc71; }
+        .error { color: #e74c3c; }
+        .info { color: #7f8c8d; }
+        .warning { color: #f39c12; }
+        
+        .hidden { display: none; }
+        
+        /* 사번 재설정 링크 */
+        .reset-link {
+            margin-top: 30px; display: inline-block; color: #b2bec3;
+            font-size: 13px; text-decoration: underline; cursor: pointer;
+        }
+        .reset-link:hover { color: #7f8c8d; }
+        
+        /* 음성 안내 권한 힌트 */
+        .audio-hint { font-size: 12px; color: #95a5a6; margin-top: 15px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>출퇴근 기록 등록</h2>
-        <div class="team-badge" id="teamDisplay">인증 부서 로딩 중...</div>
+
+    <div class="container" onclick="playVoiceIfBlocked()">
+        <h1>출퇴근 등록</h1>
         
-        <input type="password" id="employeeId" placeholder="사원번호를 입력하세요" autocomplete="off">
-        
-        <div class="btn-group">
-            <button id="btn-in">출근</button>
-            <button id="btn-out">퇴근</button>
+        <div id="auth-form" class="hidden">
+            <p style="color: #7f8c8d; margin-bottom: 15px; font-size: 15px;">최초 1회 사원번호 등록이 필요합니다.</p>
+            <input type="text" id="employeeId" placeholder="사원번호를 입력하세요">
+            <button onclick="handleManualSubmit()">출퇴근 인증하기</button>
         </div>
-        <div id="message"></div>
+
+        <div id="status-area">
+            <p class="message info" id="status-text">🔄 출퇴근 정보를 확인하고 있습니다...</p>
+            <p class="audio-hint hidden" id="audio-hint">🔊 소리가 나지 않으면 화면을 한 번 터치해주세요.</p>
+        </div>
+
+        <span id="reset-btn" class="reset-link hidden" onclick="resetSavedId()">사원번호 재설정 (다른 사번 입력)</span>
     </div>
-    <script src="/js/app.js"></script>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        let currentSpeechText = ""; // 터치 시 다시 읽어주기 위한 변수
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!token) {
+                showMsg('❌ 올바르지 않은 접근입니다. (QR 코드가 만료되었거나 없습니다.)', 'error');
+                return;
+            }
+
+            // 1분(60초) 쿨타임 체크 방어 로직
+            const lastScanTime = localStorage.getItem('lastScanTime');
+            const nowMs = Date.now();
+            if (lastScanTime && (nowMs - parseInt(lastScanTime)) < 60000) {
+                const remainSec = 60 - Math.floor((nowMs - parseInt(lastScanTime)) / 1000);
+                const blockMsg = `⏳ 방금 처리가 완료되었습니다.\n실수 방지를 위해 ${remainSec}초 후에 다시 시도해주세요.`;
+                showMsg(blockMsg, 'warning');
+                speakMessage("방금 처리가 완료되었습니다. 잠시 후 다시 시도해주세요.");
+                document.getElementById('reset-btn').classList.remove('hidden');
+                return;
+            }
+
+            const savedId = localStorage.getItem('savedEmployeeId');
+            if (savedId) {
+                document.getElementById('reset-btn').classList.remove('hidden');
+                processAttendance(savedId, true);
+            } else {
+                document.getElementById('status-area').classList.add('hidden');
+                document.getElementById('auth-form').classList.remove('hidden');
+            }
+        });
+
+        async function handleManualSubmit() {
+            const empIdInput = document.getElementById('employeeId');
+            const employeeId = empIdInput.value.trim();
+
+            if (!employeeId) {
+                alert('사원번호를 정확히 입력해주세요.');
+                return;
+            }
+
+            const saveConfirm = confirm('입력하신 사원번호를 이 휴대폰에 저장하시겠습니까?\n저장하시면 다음 스캔부터는 자동 처리됩니다.');
+            if (saveConfirm) {
+                localStorage.setItem('savedEmployeeId', employeeId);
+                document.getElementById('reset-btn').classList.remove('hidden');
+            }
+
+            document.getElementById('auth-form').classList.add('hidden');
+            document.getElementById('status-area').classList.remove('hidden');
+            
+            await processAttendance(employeeId, false);
+        }
+
+        async function processAttendance(employeeId, isAuto) {
+            try {
+                const now = new Date();
+                const kstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+                const todayDate = kstTime.toISOString().split('T')[0];
+
+                const resList = await fetch(`/api/attendance?date=${todayDate}`);
+                const list = await resList.json();
+                const myRecord = list.find(item => item.employeeId === employeeId);
+                
+                let type = 'in'; 
+                if (myRecord) {
+                    if (myRecord.clockIn && !myRecord.clockOut) {
+                        type = 'out'; 
+                    } else if (myRecord.clockIn && myRecord.clockOut) {
+                        showMsg('❌ 오늘 이미 출근과 퇴근 처리가 모두 완료되었습니다.', 'info');
+                        speakMessage('오늘 이미 출근과 퇴근 처리가 모두 완료되었습니다.');
+                        return;
+                    }
+                }
+
+                const response = await fetch('/api/attendance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ employeeId, type, token })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    const month = kstTime.getMonth() + 1;
+                    const date = kstTime.getDate();
+                    const hours = kstTime.getHours();
+                    const minutes = String(kstTime.getMinutes()).padStart(2, '0');
+                    const typeText = type === 'in' ? '출근' : '퇴근';
+
+                    // 텍스트 출력 및 음성 안내용 메시지 조립
+                    const finalMessage = `${month}월 ${date}일 ${hours}시 ${minutes}분에 ${typeText}하였습니다.`;
+                    const speechText = `${result.name}님, ${finalMessage}`;
+                    
+                    showMsg(`✅ ${speechText}`, 'success');
+                    speakMessage(speechText);
+                    
+                    // 성공 시에만 1분 쿨타임 타이머 저장
+                    localStorage.setItem('lastScanTime', Date.now());
+
+                } else {
+                    showMsg(`❌ 처리 실패: ${result.error}`, 'error');
+                    speakMessage("처리에 실패했습니다. 다시 시도해주세요.");
+                }
+            } catch (error) {
+                showMsg('❌ 서버와 통신하는 도중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        // 화면에 메시지를 띄우는 함수
+        function showMsg(text, className) {
+            const statusArea = document.getElementById('status-area');
+            const statusText = document.getElementById('status-text');
+            statusArea.classList.remove('hidden');
+            statusText.innerText = text;
+            statusText.className = `message ${className}`;
+        }
+
+        // 휴대폰 음성 지원(TTS) 함수
+        function speakMessage(text) {
+            currentSpeechText = text;
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ko-KR'; // 한국어 설정
+                utterance.rate = 1.0;     // 읽는 속도 (1.0이 기본)
+                
+                // 모바일 브라우저 정책상 터치 없이 소리가 안 날 수 있으므로 안내 문구 표시
+                document.getElementById('audio-hint').classList.remove('hidden');
+                
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // 화면 터치 시 음성이 막혀있던 것을 뚫어주는 함수
+        function playVoiceIfBlocked() {
+            if (currentSpeechText && 'speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // 기존 밀린 음성 취소
+                const utterance = new SpeechSynthesisUtterance(currentSpeechText);
+                utterance.lang = 'ko-KR';
+                window.speechSynthesis.speak(utterance);
+                document.getElementById('audio-hint').classList.add('hidden');
+            }
+        }
+
+        function resetSavedId() {
+            if (confirm('저장된 사원번호를 삭제하고 새로운 사번을 입력하시겠습니까?')) {
+                localStorage.removeItem('savedEmployeeId');
+                localStorage.removeItem('lastScanTime'); // 쿨타임도 초기화
+                window.location.reload();
+            }
+        }
+    </script>
 </body>
 </html>
