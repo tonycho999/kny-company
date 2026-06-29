@@ -14,7 +14,7 @@ export async function onRequest(context) {
 
     // 20초 단위 토큰 생성 내부 함수 (보안용)
     function getValidTokens() {
-        const timestamp = Math.floor(kstTime.getTime() / 20000); // 20초 단위 블록
+        const timestamp = Math.floor(kstTime.getTime() / 10000); // 20초 단위 블록
         return [
             String((timestamp) % 900000 + 100000),     // 현재 시간대 토큰
             String((timestamp - 1) % 900000 + 100000) // 찰나의 전 시간대 허용 범위
@@ -72,9 +72,9 @@ export async function onRequest(context) {
             if (emp.status !== "재직") return Response.json({ error: "퇴사 처리된 직원입니다." }, { status: 400 });
             
             // 3. QR코드 부서와 직원 부서 일치 판단
-            if (team && emp.team !== team) {
-                return Response.json({ error: `해당 QR은 [${team}] 전용입니다. 귀하는 [${emp.team}] 소속입니다.` }, { status: 400 });
-            }
+ //           if (team && emp.team !== team) {
+ //               return Response.json({ error: `해당 QR은 [${team}] 전용입니다. 귀하는 [${emp.team}] 소속입니다.` }, { status: 400 });
+ //           }
 
             const record = await env.DB.prepare(
                 "SELECT * FROM Attendance WHERE employee_id = ? AND date = ?"
