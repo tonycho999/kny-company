@@ -10,39 +10,31 @@
         
         .audio-toggle { position: absolute; top: 15px; right: 15px; background: #e2e8f0; border: none; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; }
         .audio-toggle.active { background: #3498db; color: white; }
-
         h2 { color: #7f8c8d; font-size: 18px; margin-top: 15px; }
         .my-number { font-size: 48px; color: #2c3e50; font-weight: 900; margin: 10px 0; }
         
         .status-card { background: #edf2f7; border-radius: 16px; padding: 25px; margin: 20px 0; }
         
-        /* ✨ 숫자가 줄어들 때 튀어오르는 애니메이션 */
         .remain-count { font-size: 64px; color: #e74c3c; font-weight: 900; display: inline-block; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .remain-count.pop { transform: scale(1.4); color: #2ecc71; }
-
         #safety-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(44, 62, 80, 0.95); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; cursor: pointer; text-align: center; }
         #safety-overlay h3 { font-size: 22px; margin-bottom: 10px; }
         .hidden { display: none !important; }
         
-        /* ✨ 순서 줄어들 때 화면 전체 플래시 효과 */
         body.flash-green { background-color: #2ecc71; }
     </style>
 </head>
 <body>
-
 <div id="safety-overlay" class="hidden" onclick="unlockOverlay()">
     <h3>🔔 대기 현황 실시간 감지 중</h3>
     <p>안내 멘트와 효과음을 정상 수신하려면 화면을 한 번 터치해주세요.</p>
 </div>
-
 <div class="wrapper">
     <button id="audioBtn" class="audio-toggle" onclick="toggleAudioMode()">
         <span id="audioIcon">🔇</span> <span id="audioTxt">소리 알림 끔</span>
     </button>
-
     <h2 id="teamName">📍 행사장 확인 중...</h2>
     <div class="my-number" id="myNum">내 번호: --번</div>
-
     <div class="status-card">
         <p style="font-size: 16px; font-weight: bold; color: #4a5568;">내 앞 대기 팀수</p>
         <div class="remain-count" id="remainCount">--</div>
@@ -83,18 +75,15 @@
             const countEl = document.getElementById('remainCount');
 
             if (lastRemain !== null && currentRemain < lastRemain) {
-                // 💥 순서 차감 연출 시동
                 countEl.classList.add('pop');
                 document.body.classList.add('flash-green');
                 
                 if (isAudioOn) dingDong.play().catch(e => console.log('차단방어'));
-
                 setTimeout(() => {
                     countEl.classList.remove('pop');
                     document.body.classList.remove('flash-green');
                 }, 600);
             }
-
             countEl.innerText = currentRemain;
             lastRemain = currentRemain;
 
