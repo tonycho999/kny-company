@@ -10,17 +10,16 @@
         const adminToken = urlParams.get('admin_token');
         
         if (!adminToken) {
-            document.write('<h2 style="color:red; text-align:center; margin-top:50px;">🚫 접근 권한이 없습니다.<br><span style="font-size:14px; color:#7f8c8d;">보안 서명이 포함된 URL이 필요합니다.</span></h2>');
+            document.write('<h2 style="color:red; text-align:center; margin-top:50px;">🚫 접근 권한이 없습니다.</h2>');
             window.stop();
         }
 
-        // 💡 [수정됨] KST(+9시간) 보정을 없애고, admin/index.html과 동일한 순수 시간으로 비교합니다.
-        const currentSlice = Math.floor(Date.now() / 10000);
+        const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
+        const currentSlice = Math.floor(nowKst.getTime() / 10000);
         const tokenDiff = currentSlice - (parseInt(adminToken) - 55555);
         
-        // 5칸(약 50초) 초과 시 만료 처리
         if (tokenDiff < 0 || tokenDiff > 5) { 
-            document.write('<h2 style="color:red; text-align:center; margin-top:50px;">🚫 보안 토큰이 만료되었습니다.<br><span style="font-size:14px; color:#7f8c8d;">관리자 대시보드에서 새 창을 다시 열어주세요.</span></h2>');
+            document.write('<h2 style="color:red; text-align:center; margin-top:50px;">🚫 보안 토큰이 만료되었습니다.</h2>');
             window.stop();
         }
     </script>
@@ -47,16 +46,15 @@
             width: 300, height: 300, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H
         });
 
-        // 백엔드로 보낼 출퇴근 토큰은 KST 기준 유지 (백엔드와 일치시키기 위함)
+        // 💡 난독화(+83749) 제거: 순수 KST 10초 단위 값만 넘깁니다.
         function generateToken() {
             const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
-            return Math.floor(nowKst.getTime() / 10000) + 83749;
+            return Math.floor(nowKst.getTime() / 10000);
         }
 
         function generateQRData() {
             const token = generateToken();
             const domain = window.location.origin; 
-            // .html 확장자를 제거하여 깔끔한 URL 생성
             return `${domain}/employee/scan?token=${token}`;
         }
 
