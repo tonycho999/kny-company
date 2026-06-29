@@ -27,26 +27,27 @@ export async function onRequest(context) {
             const team = url.searchParams.get("team");
             const type = url.searchParams.get("type");
 
-            // 팀 목록만 가져오는 기능
+            // [수정] 팀 목록 가져오기: team -> team_name 으로 변경
             if (type === "teams") {
-                const { results } = await env.DB.prepare("SELECT DISTINCT team FROM Employees WHERE status = '재직'").all();
-                return Response.json(results.map(r => r.team));
+                const { results } = await env.DB.prepare("SELECT DISTINCT team_name FROM employees WHERE status = '재직'").all();
+                return Response.json(results.map(r => r.team_name));
             }
 
-            // 출퇴근 기록 조회 (팀 필터링 조건 추가)
+            // [수정] 출퇴근 기록 조회: contact, team -> phone, team_name 으로 변경
+            // (프론트엔드 렌더링에 맞게 as 별칭 제거하고 원본 컬럼명 사용)
             let query = `
-                SELECT e.employee_id as employeeId, e.name, e.contact, e.team, a.clock_in as clockIn, a.clock_out as clockOut
-                FROM Employees e
+                SELECT e.employee_id, e.name, e.phone, e.team_name, a.clock_in, a.clock_out
+                FROM employees e
                 LEFT JOIN Attendance a ON e.employee_id = a.employee_id AND a.date = ?
             `;
             
             let results;
             if (team && team !== "전체") {
-                query += " WHERE e.team = ? ORDER BY e.employee_id ASC";
+                query += " WHERE e.team_name = ? ORDER BY e.employee_id ASC";
                 const res = await env.DB.prepare(query).bind(date, team).all();
                 results = res.results;
             } else {
-                query += " ORDER BY e.team ASC, e.employee_id ASC";
+                query += " ORDER BY e.team_name ASC, e.employee_id ASC";
                 const res = await env.DB.prepare(query).bind(date).all();
                 results = res.results;
             }
@@ -63,18 +64,18 @@ export async function onRequest(context) {
                 return Response.json({ error: "만료되거나 유효하지 않은 QR코드입니다. 다시 스캔하세요." }, { status: 400 });
             }
 
-            // 2. 직원 정보 및 소속 팀 확인
+            // 2. 직원 정보 및 소속 팀 확인 [수정: team -> team_name]
             const emp = await env.DB.prepare(
-                "SELECT name, status, team FROM Employees WHERE employee_id = ?"
+                "SELECT name, status, team_name FROM employees WHERE employee_id = ?"
             ).bind(employeeId).first();
 
             if (!emp) return Response.json({ error: "등록되지 않은 사원번호입니다." }, { status: 400 });
             if (emp.status !== "재직") return Response.json({ error: "퇴사 처리된 직원입니다." }, { status: 400 });
             
-            // 3. QR코드 부서와 직원 부서 일치 판단
- //           if (team && emp.team !== team) {
- //               return Response.json({ error: `해당 QR은 [${team}] 전용입니다. 귀하는 [${emp.team}] 소속입니다.` }, { status: 400 });
- //           }
+            // 3. QR코드 부서와 직원 부서 일치 판단 [수정: emp.team -> emp.team_name]
+            // if (team && emp.team_name !== team) {
+            //     return Response.json({ error: `해당 QR은 [${team}] 전용입니다. 귀하는 [${emp.team_name}] 소속입니다.` }, { status: 400 });
+            // }
 
             const record = await env.DB.prepare(
                 "SELECT * FROM Attendance WHERE employee_id = ? AND date = ?"
