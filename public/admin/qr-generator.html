@@ -46,16 +46,14 @@
             width: 300, height: 300, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H
         });
 
-        // 💡 난독화(+83749) 제거: 순수 KST 10초 단위 값만 넘깁니다.
-        function generateToken() {
-            const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
-            return Math.floor(nowKst.getTime() / 10000);
-        }
-
+        // 가짜 파라미터 없이 순수 시간 기반 토큰만 생성
         function generateQRData() {
-            const token = generateToken();
+            const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
+            const realToken = Math.floor(nowKst.getTime() / 10000);
             const domain = window.location.origin; 
-            return `${domain}/employee/scan?token=${token}`;
+            
+            // 깔끔하게 토큰만 전달
+            return `${domain}/employee/scan?token=${realToken}`;
         }
 
         function updateQR() {
