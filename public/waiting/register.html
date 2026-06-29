@@ -8,20 +8,18 @@
         body { font-family: 'Noto Sans KR', sans-serif; background-color: #f5f6fa; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
         .wrapper { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.06); max-width: 450px; width: 100%; }
         h1 { font-size: 24px; color: #2c3e50; text-align: center; margin-bottom: 5px; }
-        .loc-name { text-align: center; color: #3498db; font-weight: bold; margin-bottom: 25px; font-size: 16px; }
+        .loc-name { text-align: center; color: #3498db; font-weight: bold; margin-bottom: 25px; font-size: 18px; }
         label { display: block; font-weight: bold; margin-bottom: 8px; color: #34495e; font-size: 14px; }
-        input[type="text"], input[type="number"], select { width: 100%; padding: 14px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 14px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
         .chk-container { display: flex; align-items: center; gap: 10px; margin-bottom: 25px; background: #edf2f7; padding: 12px; border-radius: 8px; cursor: pointer; }
-        .chk-container input { width: 18px; height: 18px; }
         button { width: 100%; padding: 16px; background-color: #3498db; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
-        button:hover { background-color: #2980b9; }
     </style>
 </head>
 <body>
 
 <div class="wrapper">
     <h1>대기 접수 등록</h1>
-    <div class="loc-name" id="location-title">📍 행사장 정보 확인 중...</div>
+    <div class="loc-name" id="team-title">📍 행사장 확인 중...</div>
 
     <form id="waitingForm" onsubmit="handleSubmit(event)">
         <label>방문자 성명</label>
@@ -44,27 +42,20 @@
 
 <script>
     const urlParams = new URLSearchParams(window.location.search);
-    const locationId = urlParams.get('locationId');
+    const teamName = urlParams.get('team'); // ★ 주소창의 ?team=값 추출
 
-    document.addEventListener('DOMContentLoaded', async () => {
-        if (!locationId) {
-            alert('잘못된 접근입니다. 행사 장소 정보가 없습니다.');
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!teamName) {
+            alert('잘못된 접근입니다. 행사 장소(팀) 정보가 유실되었습니다.');
             return;
         }
-        // 행사장 이름 정보 가져오기
-        try {
-            const res = await fetch(`/api/locations/${locationId}`);
-            const loc = await res.json();
-            document.getElementById('location-title').innerText = `📍 ${loc.name}`;
-        } catch {
-            document.getElementById('location-title').innerText = `📍 지정 행사장`;
-        }
+        document.getElementById('team-title').innerText = `📍 ${decodeURIComponent(teamName)}`;
     });
 
     async function handleSubmit(e) {
         e.preventDefault();
         const payload = {
-            location_id: parseInt(locationId),
+            team_name: teamName, // ★ DB로 팀 이름 바로 전송
             name: document.getElementById('name').value.trim(),
             phone: document.getElementById('phone').value.trim(),
             count: parseInt(document.getElementById('count').value),
@@ -80,13 +71,13 @@
             const result = await res.json();
             
             if(res.ok) {
-                // 등록 성공 시 실시간 상태 페이지로 이동하며 고유 ID 전달
-                window.location.href = `/waiting/status.html?id=${result.id}&locationId=${locationId}`;
+                // 등록 완료 후 실시간 대기판으로 토스
+                window.location.href = `/waiting/status.html?id=${result.id}&team=${encodeURIComponent(teamName)}`;
             } else {
                 alert(`등록 실패: ${result.error}`);
             }
         } catch {
-            alert('서버와 통신 중 오류가 발생했습니다.');
+            alert('서버 통신 오류');
         }
     }
 </script>
