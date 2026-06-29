@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KNY Company - 포트폴리오 상세</title>
+    <!-- Quill 에디터의 기본 스타일을 가져와서 작성된 글이 똑같이 보이게 합니다. -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Noto Sans KR', sans-serif; color: #333; line-height: 1.6; background: #f8f9fa; }
+        a { text-decoration: none; color: inherit; }
+        
+        header { position: fixed; top: 0; left: 0; width: 100%; background-color: #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1000; display: flex; justify-content: space-between; align-items: center; padding: 15px 40px; }
+        .logo img { height: 40px; vertical-align: middle; border: none; }
+        .nav-menu { display: flex; list-style: none; align-items: center; }
+        .nav-menu li { margin-right: 30px; font-weight: 500; }
+        
+        .container { max-width: 900px; margin: 120px auto 50px; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); min-height: 50vh; }
+        
+        .post-title { font-size: 32px; color: #2c3e50; margin-bottom: 10px; font-weight: bold; border-bottom: 2px solid #ecf0f1; padding-bottom: 20px; }
+        .post-date { font-size: 14px; color: #7f8c8d; text-align: right; margin-bottom: 30px; }
+        
+        /* 게시글 본문 영역 (Quill 에디터 스타일 적용을 위해 ql-editor 클래스 사용) */
+        .post-content { min-height: 300px; font-size: 16px; color: #444; }
+        .post-content img { max-width: 100%; height: auto; display: block; margin: 20px auto; border-radius: 8px; }
+        
+        .btn-back { display: inline-block; margin-top: 50px; padding: 12px 25px; background: #3498db; color: white; border-radius: 6px; font-weight: bold; text-align: center; }
+        .btn-back:hover { background: #2980b9; }
+
+        .loading-msg { text-align: center; color: #7f8c8d; font-size: 18px; padding: 50px 0; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="/">
+                <img src="/images/kny-logo.png" alt="KNY Company">
+            </a>
+        </div>
+        <nav>
+            <ul class="nav-menu">
+                <li><a href="/#about">회사소개</a></li>
+                <li><a href="/#projects">행사 실적</a></li>
+                <li><a href="/#contact">상담 및 문의</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div id="detail-view">
+            <p class="loading-msg">데이터를 불러오는 중입니다...</p>
+        </div>
+        
+        <div style="text-align: center;">
+            <a href="/#projects" class="btn-back">목록으로 돌아가기</a>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const id = urlParams.get('id');
+
+            if (!id) {
+                document.getElementById('detail-view').innerHTML = `<p class="loading-msg" style="color:#e74c3c;">잘못된 접근입니다.</p>`;
+                return;
+            }
+
+            try {
+                // 전체 목록을 가져온 뒤 해당 ID의 데이터만 추출 (차후 상세조회용 백엔드 API를 추가하면 더 효율적입니다)
+                const res = await fetch('/api/portfolios');
+                const list = await res.json();
+                const portfolio = list.find(p => String(p.id) === id);
+
+                if (!portfolio) {
+                    document.getElementById('detail-view').innerHTML = `<p class="loading-msg" style="color:#e74c3c;">삭제되었거나 존재하지 않는 게시글입니다.</p>`;
+                    return;
+                }
+
+                const date = new Date(portfolio.created_at).toLocaleDateString('ko-KR');
+
+                // ql-editor 클래스를 줘야 관리자 텍스트 에디터에서 작성한 정렬, 폰트 등이 똑같이 보입니다.
+                document.getElementById('detail-view').innerHTML = `
+                    <div class="post-title">${portfolio.title}</div>
+                    <div class="post-date">등록일: ${date}</div>
+                    <div class="post-content ql-editor">${portfolio.content}</div>
+                `;
+            } catch(e) {
+                document.getElementById('detail-view').innerHTML = `<p class="loading-msg" style="color:#e74c3c;">서버 통신 오류가 발생했습니다.</p>`;
+            }
+        });
+    </script>
+</body>
+</html>
