@@ -4,6 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>공용 출퇴근 QR 코드</title>
+
+    <script>
+        // 💡 [핵심 보안] 화면이 열리자마자 토큰을 검사합니다.
+        const urlParams = new URLSearchParams(window.location.search);
+        const adminToken = urlParams.get('admin_token');
+        
+        // 올바른 루트로 들어온 것이 아니라면 즉시 차단합니다.
+        if (!adminToken) {
+            document.write('<h2 style="color:red; text-align:center; margin-top:50px;">🚫 비정상적인 접근입니다. (관리자 페이지를 통해서만 열 수 있습니다.)</h2>');
+            window.stop(); // 페이지 렌더링 중지
+        }
+
+        // 토큰 시간 검증 (50초 이상 지난 링크로 들어오면 차단 - 즐겨찾기/복사 방지)
+        const currentSlice = Math.floor(Date.now() / 10000);
+        const tokenDiff = currentSlice - (parseInt(adminToken) - 55555);
+        if (tokenDiff < 0 || tokenDiff > 5) { 
+            document.write('<h2 style="color:red; text-align:center; margin-top:50px;">🚫 만료된 접근 링크입니다. 관리자 대시보드에서 다시 띄워주세요.</h2>');
+            window.stop();
+        }
+
+        // 검증을 통과했다면 즉시 주소창에서 토큰을 지워버려 복사를 불가능하게 만듭니다.
+        window.history.replaceState({}, document.title, window.location.pathname);
+    </script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #ecf0f1; margin: 0; font-family: 'Noto Sans KR', sans-serif; }
@@ -33,7 +57,6 @@
         function generateQRData() {
             const token = generateToken();
             const domain = window.location.origin; 
-            // 💡 .html 확장자를 제거하여 URL을 더욱 깔끔하게 만듭니다.
             return `${domain}/employee/scan?token=${token}`;
         }
 
