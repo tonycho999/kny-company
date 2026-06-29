@@ -12,29 +12,17 @@ export async function onRequest(context) {
     const todayDate = kstTime.toISOString().split('T')[0];
     const currentTime = kstTime.toISOString().split('T')[1].substring(0, 5);
 
-    // 20초 단위 토큰 생성 내부 함수 (보안용)
-    function getValidTokens() {
-        const timestamp = Math.floor(kstTime.getTime() / 10000); // 20초 단위 블록
-        return [
-            String((timestamp) % 900000 + 100000),     // 현재 시간대 토큰
-            String((timestamp - 1) % 900000 + 100000) // 찰나의 전 시간대 허용 범위
-        ];
-    }
-
     try {
         if (method === "GET") {
             const date = url.searchParams.get("date") || todayDate;
             const team = url.searchParams.get("team");
             const type = url.searchParams.get("type");
 
-            // [수정] 팀 목록 가져오기: team -> team_name 으로 변경
             if (type === "teams") {
                 const { results } = await env.DB.prepare("SELECT DISTINCT team_name FROM employees WHERE status = '재직'").all();
                 return Response.json(results.map(r => r.team_name));
             }
 
-            // [수정] 출퇴근 기록 조회: contact, team -> phone, team_name 으로 변경
-            // (프론트엔드 렌더링에 맞게 as 별칭 제거하고 원본 컬럼명 사용)
             let query = `
                 SELECT e.employee_id, e.name, e.phone, e.team_name, a.clock_in, a.clock_out
                 FROM employees e
@@ -55,27 +43,24 @@ export async function onRequest(context) {
         }
 
         if (method === "POST") {
-            const { employeeId, type, date, team, token } = await request.json();
+            const { employeeId, type, date, token } = await request.json();
             const targetDate = date || todayDate;
 
-            // 1. 보안 토큰 검증 (QR 캡처 방지)
-            const validTokens = getValidTokens();
-            if (!token || !validTokens.includes(token)) {
-                return Response.json({ error: "만료되거나 유효하지 않은 QR코드입니다. 다시 스캔하세요." }, { status: 400 });
+            // 💡 1. 토큰 검증 여유시간(오차 허용)을 늘리고 KST 기준으로 계산
+            const currentSlice = Math.floor(kstTime.getTime() / 10000);
+            const tokenDiff = currentSlice - parseInt(token);
+
+            // 여유를 5칸(약 50초)으로 늘림. 
+            if (isNaN(tokenDiff) || tokenDiff < 0 || tokenDiff > 5) {
+                return Response.json({ error: "만료되거나 유효하지 않은 QR코드입니다. 입구에서 다시 스캔하세요." }, { status: 400 });
             }
 
-            // 2. 직원 정보 및 소속 팀 확인 [수정: team -> team_name]
             const emp = await env.DB.prepare(
                 "SELECT name, status, team_name FROM employees WHERE employee_id = ?"
             ).bind(employeeId).first();
 
             if (!emp) return Response.json({ error: "등록되지 않은 사원번호입니다." }, { status: 400 });
             if (emp.status !== "재직") return Response.json({ error: "퇴사 처리된 직원입니다." }, { status: 400 });
-            
-            // 3. QR코드 부서와 직원 부서 일치 판단 [수정: emp.team -> emp.team_name]
-            // if (team && emp.team_name !== team) {
-            //     return Response.json({ error: `해당 QR은 [${team}] 전용입니다. 귀하는 [${emp.team_name}] 소속입니다.` }, { status: 400 });
-            // }
 
             const record = await env.DB.prepare(
                 "SELECT * FROM Attendance WHERE employee_id = ? AND date = ?"
