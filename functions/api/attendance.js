@@ -7,6 +7,7 @@ export async function onRequest(context) {
         return Response.json({ error: "데이터베이스 바인딩(DB)이 설정되지 않았습니다." }, { status: 500 });
     }
 
+    // 서버 KST 시간 기준 생성
     const now = new Date();
     const kstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
     const todayDate = kstTime.toISOString().split('T')[0];
@@ -46,15 +47,15 @@ export async function onRequest(context) {
             const { employeeId, type, date, token } = await request.json();
             const targetDate = date || todayDate;
 
-            // 💡 1. 토큰 검증 여유시간(오차 허용)을 늘리고 KST 기준으로 계산
+            // 💡 [수정] 복잡한 계산식 제거: KST 기준 10초 슬라이스 비교 및 여유 시간(5칸 = 약 50초) 검증
             const currentSlice = Math.floor(kstTime.getTime() / 10000);
             const tokenDiff = currentSlice - parseInt(token);
 
-            // 여유를 5칸(약 50초)으로 늘림. 
             if (isNaN(tokenDiff) || tokenDiff < 0 || tokenDiff > 5) {
                 return Response.json({ error: "만료되거나 유효하지 않은 QR코드입니다. 입구에서 다시 스캔하세요." }, { status: 400 });
             }
 
+            // 2. 직원 정보 확인
             const emp = await env.DB.prepare(
                 "SELECT name, status, team_name FROM employees WHERE employee_id = ?"
             ).bind(employeeId).first();
@@ -62,6 +63,7 @@ export async function onRequest(context) {
             if (!emp) return Response.json({ error: "등록되지 않은 사원번호입니다." }, { status: 400 });
             if (emp.status !== "재직") return Response.json({ error: "퇴사 처리된 직원입니다." }, { status: 400 });
 
+            // 3. 근태 DB 기록
             const record = await env.DB.prepare(
                 "SELECT * FROM Attendance WHERE employee_id = ? AND date = ?"
             ).bind(employeeId, targetDate).first();
@@ -81,6 +83,7 @@ export async function onRequest(context) {
                     await env.DB.prepare("UPDATE Attendance SET clock_out = ? WHERE employee_id = ? AND date = ?")
                         .bind(currentTime, employeeId, targetDate).run();
                 } else {
+                    // 출근을 안누르고 퇴근부터 눌렀을 경우를 위한 방어 로직
                     await env.DB.prepare("INSERT INTO Attendance (employee_id, date, clock_out) VALUES (?, ?, ?)")
                         .bind(employeeId, targetDate, currentTime).run();
                 }
