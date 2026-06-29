@@ -1,150 +1,44 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>케이앤와이 주식회사 (KNY Company) - EVENT AGENCY</title>
-    <style>
-        /* 기본 스타일 리셋 및 세팅 */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Noto Sans KR', sans-serif; color: #333; line-height: 1.6; }
-        a { text-decoration: none; color: inherit; }
+<section id="projects">
+    <h2>주요 진행 행사 및 포트폴리오</h2>
+    <p>케이앤와이 주식회사가 진행한 생생한 현장 실적을 확인하세요.</p>
+    
+    <div id="portfolio-grid" class="portfolio-grid"></div>
+</section>
 
-        /* 상단 네비게이션 바 */
-        header {
-            position: fixed; top: 0; left: 0; width: 100%;
-            background-color: #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            z-index: 1000; display: flex; justify-content: space-between; align-items: center;
-            padding: 15px 40px;
+<style>
+    .portfolio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px; max-width: 1200px; width: 100%; margin-top: 40px; padding: 0 20px; }
+    .portfolio-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.08); text-align: left; transition: transform 0.2s; }
+    .portfolio-card:hover { transform: translateY(-5px); }
+    .portfolio-card img { width: 100%; height: 200px; object-fit: cover; }
+    .portfolio-card .card-body { padding: 20px; }
+    .portfolio-card h3 { font-size: 18px; color: #2c3e50; margin-bottom: 10px; }
+    .portfolio-card p { font-size: 14px; color: #7f8c8d; line-height: 1.5; }
+</style>
+
+<script>
+    // 페이지 로드 시 포트폴리오 동적 호출
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const res = await fetch('/api/portfolios');
+            const data = await res.json();
+            const grid = document.getElementById('portfolio-grid');
+            
+            if(data.length === 0) {
+                grid.innerHTML = `<p style="grid-column: 1/-1; color:#95a5a6;">등록된 포트폴리오 실적이 없습니다.</p>`;
+                return;
+            }
+
+            grid.innerHTML = data.map(item => `
+                <div class="portfolio-card">
+                    <img src="${item.image_url || '/images/default-placeholder.png'}" alt="${item.title}">
+                    <div class="card-body">
+                        <h3>${item.title}</h3>
+                        <p>${item.description}</p>
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) {
+            document.getElementById('portfolio-grid').innerHTML = `<p style="grid-column: 1/-1; color:#e74c3c;">실적 로딩 중 오류가 발생했습니다.</p>`;
         }
-        .logo img { height: 40px; vertical-align: middle; border: none; }
-        
-        .nav-menu { display: flex; list-style: none; align-items: center; }
-        .nav-menu li { margin-right: 30px; font-weight: 500; }
-        .nav-menu li a:hover { color: #3498db; }
-
-        /* 각 섹션 공통 스타일 */
-        section {
-            padding: 120px 40px 80px; min-height: 100vh;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            text-align: center;
-        }
-        section h2 { font-size: 36px; margin-bottom: 20px; color: #2c3e50; font-weight: bold; }
-        section p { font-size: 18px; color: #555; max-width: 800px; word-break: keep-all; }
-
-        /* 섹션별 배경색 구분 */
-        #home { background-color: #f8f9fa; }
-        #about { background-color: #ffffff; }
-        #projects { background-color: #e9ecef; }
-        #contact { background-color: #ffffff; }
-
-        /* 포인트 컬러 및 텍스트 강조 */
-        .highlight { color: #3498db; font-weight: bold; }
-        
-        /* 사업 분야 리스트 스타일 */
-        .service-list {
-            list-style: none; margin-top: 30px; padding: 0;
-            display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; max-width: 900px;
-        }
-        .service-list li {
-            background: #f1f2f6; padding: 15px 25px; border-radius: 30px;
-            font-size: 18px; font-weight: bold; color: #2f3640;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
-
-        /* 연락처 박스 스타일 */
-        .contact-box {
-            background: #f8f9fa; border: 2px solid #e1e8ed; border-radius: 15px;
-            padding: 40px; margin-top: 30px; text-align: center;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-        }
-        .contact-box h3 { font-size: 28px; color: #e74c3c; margin-bottom: 10px; }
-        .contact-box p { font-size: 22px; font-weight: bold; color: #2c3e50; margin: 10px 0; }
-        .contact-time { display: inline-block; background: #2c3e50; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-bottom: 20px; }
-
-        /* ✨ 하단 사업자 정보 스타일 세팅 */
-        footer {
-            background-color: #2c3e50; color: #bdc3c7; text-align: center;
-            padding: 40px 20px; font-size: 14px; line-height: 1.8;
-            border-top: 1px solid #34495e;
-        }
-        .footer-info { max-width: 1000px; margin: 0 auto; text-align: center; }
-        .footer-info p { margin: 4px 0; }
-        .footer-info span { margin: 0 10px; color: #7f8c8d; }
-        .footer-info a { text-decoration: underline; color: #ffffff; }
-        .footer-info a:hover { color: #3498db; }
-    </style>
-</head>
-<body>
-
-    <header>
-        <div class="logo">
-            <a href="#home">
-                <img src="/images/kny-logo.png" alt="KNY Company">
-            </a>
-        </div>
-        <nav>
-            <ul class="nav-menu">
-                <li><a href="#about">회사소개 (사업분야)</a></li>
-                <li><a href="#projects">주요 행사 실적</a></li>
-                <li><a href="#contact">상담/견적 문의</a></li>
-            </ul>
-        </nav>
-    </header>
-
-    <section id="home">
-        <h2>행사 기획부터 설치, 운영까지 완벽하게!<br><span class="highlight">케이앤와이 주식회사 (EVENT AGENCY)</span></h2>
-        <p style="margin-top: 15px; font-size: 20px;">
-            강북 최대 규모! 행사대행, 물놀이 전문업체, 행사물품 대여 등<br>
-            성공적인 행사를 위한 최고의 파트너 <strong>"kny-company"</strong> 입니다.
-        </p>
-    </section>
-
-    <section id="about">
-        <h2>무엇을 도와드릴까요?</h2>
-        <p>KNY Company는 수많은 현장 경험을 바탕으로 아래와 같은 전문 서비스를 제공합니다.</p>
-        
-        <ul class="service-list">
-            <li>🎤 기업·관공서 행사 / 지역축제 기획</li>
-            <li>🌊 물놀이 전문 (수영장, 슬라이드 설치)</li>
-            <li>🏫 학교 안전교육 및 보건교육 전문</li>
-            <li>🏃‍♂️ 학교·유치원 체육대회 대행</li>
-            <li>🎪 각종 행사 물품 렌탈 및 대여</li>
-        </ul>
-    </section>
-
-    <section id="projects">
-        <h2>주요 진행 행사 및 포트폴리오</h2>
-        <p>
-            대형 물놀이 바운스 설치, 무대 음향/조명 세팅, 야외 행사 천막 및 부스 설치 등<br>
-            고객님이 원하시는 규모와 목적에 맞춘 다양한 행사 진행 사진과 실적이 업데이트될 예정입니다.
-        </p>
-        <div style="margin-top: 40px; width: 100%; max-width: 800px; height: 300px; background-color: #ddd; display: flex; align-items: center; justify-content: center; border-radius: 15px; color: #7f8c8d;">
-            (추후 행사 현장 사진 갤러리가 들어갈 자리입니다)
-        </div>
-    </section>
-
-    <section id="contact">
-        <h2>견적 및 상담 문의</h2>
-        <p>궁금하신 점이나 행사 견적이 필요하시다면 언제든지 연락해 주세요!</p>
-        
-        <div class="contact-box">
-            <span class="contact-time">문자, 카톡, 이메일 24시간 무료 상담 환영</span>
-            <p>📞 010 - 6284 - 5551</p>
-            <p>📞 010 - 3469 - 3443 / 010 - 6474 - 8368 / 010 - 6722 - 5392</p>
-            <p style="color: #3498db;">✉️ kny-company@naver.com</p>
-        </div>
-    </section>
-
-    <footer>
-        <div class="footer-info">
-            <p style="color: #ffffff; font-weight: bold; font-size: 16px; margin-bottom: 10px;">케이앤와이 주식회사 (KNY Company)</p>
-            <p>대표 : 강경란 <span>|</span> 주소 : 경기도 동두천시 삼육사로 1084-15, 2층</p>
-            <p>사업자등록번호 : 388-81-01529 <span>|</span> 통신판매업신고 : 신고면제</p>
-            <p>전화 : 010-6284-5551 <span>|</span> 메일 : kny-company@naver.com <span>|</span> <a href="/terms">이용약관 보기 ▶</a></p>
-            <p style="margin-top: 25px; font-size: 12px; color: #7f8c8d;">&copy; 2026 KNY Company. All Rights Reserved.</p>
-        </div>
-    </footer>
-
-</body>
-</html>
+    });
+</script>
