@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f1f2f6; margin: 0; padding: 40px; }
+        .panel { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+        th, td { border-bottom: 1px solid #ddd; padding: 12px; text-align: left; vertical-align: middle; }
+        th { background: #f8f9fa; }
+        label { display:block; margin-bottom:5px; font-weight:bold; }
+        input, select { width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; box-sizing:border-box; }
+        .btn { padding: 10px 20px; background: #3498db; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; }
+        .btn-danger { background: #e74c3c; }
+        .btn-danger:disabled { background: #bdc3c7; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <h2>임직원 신규 등록</h2>
+        <form id="employee-form" onsubmit="registerEmployee(event)" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:15px; margin-bottom:30px; background:#f8f9fa; padding:20px; border-radius:8px;">
+            <div><label>사원번호</label><input type="text" id="e-id" required></div>
+            <div><label>이름</label><input type="text" id="e-name" required></div>
+            <div><label>소속 팀명 (행사장명)</label><input type="text" id="e-team" placeholder="입력 시 팀 자동 생성됨"></div>
+            <div><label>연락처</label><input type="text" id="e-phone"></div>
+            <div><label>이메일 주소</label><input type="text" id="e-email"></div>
+            <div style="display:flex; align-items:flex-end;"><button class="btn" type="submit" style="width:100%;">직원 등록하기</button></div>
+        </form>
+
+        <h2>전체 임직원 관리</h2>
+        <table>
+            <thead><tr><th>사원번호</th><th>이름</th><th>팀명(행사장)</th><th>연락처</th><th>이메일</th><th>직원상태</th><th>관리</th></tr></thead>
+            <tbody id="employee-tbody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', loadEmployees);
+
+        async function registerEmployee(e) {
+            e.preventDefault();
+            const payload = {
+                employee_id: document.getElementById('e-id').value.trim(),
+                name: document.getElementById('e-name').value.trim(),
+                team_name: document.getElementById('e-team').value.trim(),
+                phone: document.getElementById('e-phone').value.trim(),
+                email: document.getElementById('e-email').value.trim()
+            };
+            try {
+                const res = await fetch('/api/employees', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+                if(res.ok) {
+                    alert(`직원 [${payload.name}] 등록 완료!`);
+                    document.getElementById('employee-form').reset();
+                    loadEmployees();
+                } else alert('등록 실패');
+            } catch(err) { alert('서버와 통신할 수 없습니다.'); }
+        }
+
+        async function loadEmployees() {
+            try {
+                const res = await fetch('/api/employees');
+                const list = await res.json();
+                document.getElementById('employee-tbody').innerHTML = list.map(emp => `
+                    <tr>
+                        <td>${emp.employee_id}</td>
+                        <td><b>${emp.name}</b></td>
+                        <td>${emp.team_name || '<span style="color:#95a5a6;">미배정</span>'}</td>
+                        <td>${emp.phone || '-'}</td>
+                        <td>${emp.email || '-'}</td>
+                        <td>
+                            <select onchange="updateEmpStatus('${emp.employee_id}', this.value)" style="padding:5px;">
+                                <option value="재직" ${emp.status === '재직' ? 'selected' : ''}>재직</option>
+                                <option value="퇴사" ${emp.status === '퇴사' ? 'selected' : ''}>퇴사</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="btn btn-danger" style="padding:5px 10px;" ${emp.status === '재직' ? 'disabled' : ''} onclick="deleteEmp('${emp.employee_id}')">삭제</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch(e) { document.getElementById('employee-tbody').innerHTML = `<tr><td colspan="7">명부를 불러오지 못했습니다.</td></tr>`; }
+        }
+
+        async function updateEmpStatus(empId, newStatus) {
+            try {
+                await fetch(`/api/employees`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ employee_id: empId, status: newStatus }) });
+                loadEmployees();
+            } catch(e) { alert('통신 오류'); }
+        }
+
+        async function deleteEmp(empId) {
+            if(!confirm('이 직원의 모든 데이터를 시스템에서 영구 삭제하시겠습니까?')) return;
+            try {
+                await fetch(`/api/employees?employee_id=${empId}`, { method: 'DELETE' });
+                loadEmployees();
+            } catch(e) { alert('통신 오류'); }
+        }
+    </script>
+</body>
+</html>
