@@ -142,18 +142,24 @@
         loadWaitlistData();
     }
 
-    function generateCustomerQR() {
-        const locId = document.getElementById('qr-loc-selector').value;
-        const selText = document.getElementById('qr-loc-selector').options[document.getElementById('qr-loc-selector').selectedIndex].text;
-        const targetUrl = `${window.location.origin}/waiting/register.html?locationId=${locId}`;
-        
-        // 구글 차트 API를 사용해 행사장별 고유 경로를 갖는 QR 자동 바인딩
-        document.getElementById('qr-result-box').innerHTML = `
-            <h4 style="margin-bottom:10px; color:#2c3e50;">${selText} 전용 QR 현장 부착물</h4>
-            <img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(targetUrl)}&choe=UTF-8" alt="QR">
-            <p style="font-size:12px; margin-top:5px; color:#7f8c8d;">주소: ${targetUrl}</p>
-        `;
-    }
+   function generateCustomerQR() {
+    const teamName = document.getElementById('qr-team-selector').value;
+    if(!teamName) return;
+    
+    // 10초 갱신형 화면으로 바로갈 수 있는 링크 주소 조립
+    const displayUrl = `${window.location.origin}/waiting/qr-display.html?team=${encodeURIComponent(teamName)}`;
+    
+    document.getElementById('qr-result-box').innerHTML = `
+        <h4 style="margin-bottom:10px; color:#2c3e50;">📢 [${teamName}] 10초 갱신형 QR 시스템 가동</h4>
+        <p style="color:#e74c3c; font-weight:bold; font-size:14px; margin-bottom:15px;">
+            ⚠️ 원격 꼼수 등록 방지를 위해 인쇄용 QR 대신 화면 송출용 링크가 제공됩니다.
+        </p>
+        <a href="${displayUrl}" target="_blank" class="btn" style="display:inline-block; background:#2c3e50; text-decoration:none;">
+            📺 입구 태블릿/모니터용 QR 화면 열기 (클릭)
+        </a>
+        <p style="font-size:12px; margin-top:10px; color:#7f8c8d;">행사장 입구 스크린에 위 화면을 전체화면으로 틀어두시면 됩니다.</p>
+    `;
+}
 
     // 포트폴리오 추가 처리 API 바인딩
     async function addPortfolio(e) {
