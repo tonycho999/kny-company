@@ -6,7 +6,6 @@
     <title>KNY Company - 출퇴근 등록 시스템</title>
     
     <script>
-        // 💡 [핵심 보안] 화면이 그려지기 전인 0.001초 타이밍에 주소창의 파라미터를 즉시 지워버립니다.
         const urlParams = new URLSearchParams(window.location.search);
         const incomingToken = urlParams.get('token');
         if (incomingToken) {
@@ -65,10 +64,6 @@
     </div>
 
     <script>
-        const audioIn = new Audio('/sounds/clock_in.mp3');
-        const audioOut = new Audio('/sounds/clock_out.mp3');
-        
-        // 메모리에 숨겨둔 토큰을 꺼내옵니다.
         let rawToken = sessionStorage.getItem('scan_token');
         let globalEmployeeId = ""; 
         let globalRealToken = null; 
@@ -81,8 +76,18 @@
                 return;
             }
 
-            // 난독화 복호화 (-83749)
+            // 💡 KST 기준으로 시간 오차 보정
+            const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
+            const currentSlice = Math.floor(nowKst.getTime() / 10000);
+            
             globalRealToken = parseInt(rawToken) - 83749;
+            const tokenDiff = currentSlice - globalRealToken;
+            
+            // 검증 여유 시간을 넉넉하게 5로 늘림 (약 50초간 유효)
+            if (tokenDiff < 0 || tokenDiff > 5) { 
+                showMsg('❌ 만료된 QR코드입니다. 입구의 최신 화면을 다시 스캔해주세요.', 'error');
+                return;
+            }
 
             const savedId = localStorage.getItem('savedEmployeeId');
             if (savedId) {
@@ -99,7 +104,7 @@
             const employeeId = document.getElementById('employeeId').value.trim();
             if (!employeeId) return alert('사원번호를 입력해주세요.');
 
-            if (confirm('입력하신 사원번호를 이 휴대폰에 저장하시겠습니까?\n저장하시면 다음 스캔부터는 사번 입력창이 생략됩니다.')) {
+            if (confirm('입력하신 사원번호를 이 휴대폰에 저장하시겠습니까?')) {
                 localStorage.setItem('savedEmployeeId', employeeId);
             }
             
@@ -121,8 +126,8 @@
                     return;
                 }
 
-                const today = new Date().toISOString().split('T')[0];
-                const resAtt = await fetch(`/api/attendance?date=${today}`);
+                const todayKst = new Date(Date.now() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+                const resAtt = await fetch(`/api/attendance?date=${todayKst}`);
                 const attendances = await resAtt.json();
                 
                 const myTodayRecord = attendances.find(att => att.employee_id === employeeId);
@@ -146,56 +151,4 @@
                     document.getElementById('choice-form').classList.add('hidden');
                     showMsg('🎉 오늘 하루도 수고 많으셨습니다!\n(출퇴근 처리가 모두 완료된 상태입니다)', 'success');
                 }
-            } catch (e) {
-                showMsg('❌ 서버 통신 중 오류가 발생했습니다.', 'error');
-            }
-        }
-
-        async function submitAttendance(type) {
-            document.getElementById('choice-form').classList.add('hidden');
-            showMsg('⏳ 출퇴근 기록을 전송하는 중입니다...', 'info');
-
-            try {
-                const response = await fetch('/api/attendance', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ employeeId: globalEmployeeId, type, token: globalRealToken })
-                });
-
-                const result = await response.json();
-                
-                if (response.ok) {
-                    const now = new Date();
-                    const hours = String(now.getHours()).padStart(2, '0');
-                    const minutes = String(now.getMinutes()).padStart(2, '0');
-                    const typeText = type === 'in' ? '출근' : '퇴근';
-
-                    if (type === 'in') audioIn.play().catch(e => console.log("재생 차단 방어"));
-                    else audioOut.play().catch(e => console.log("재생 차단 방어"));
-
-                    showMsg(`✅ ${result.name}님, ${hours}시 ${minutes}분에 ${typeText} 처리되었습니다.`, 'success');
-                } else {
-                    showMsg(`❌ 처리 실패: ${result.error}`, 'error');
-                }
-            } catch (error) {
-                showMsg('❌ 서버 전송 오류가 발생했습니다.', 'error');
-            }
-        }
-
-        function showMsg(text, className) {
-            document.getElementById('status-area').classList.remove('hidden');
-            const txtNode = document.getElementById('status-text');
-            txtNode.innerText = text;
-            txtNode.className = `message ${className}`;
-        }
-
-        function resetSavedId() {
-            if (confirm('저장된 사원번호를 삭제하시겠습니까?')) {
-                localStorage.removeItem('savedEmployeeId');
-                sessionStorage.removeItem('scan_token');
-                window.location.reload();
-            }
-        }
-    </script>
-</body>
-</html>
+            } catch (e
