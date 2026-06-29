@@ -80,7 +80,6 @@
         <p style="color:#7f8c8d; margin-bottom: 20px;">현장 웨이팅용 QR은 [직원용 웨이팅 통제 시스템] 페이지에서 발급 가능합니다.</p>
         <div class="form-group" style="margin-bottom: 40px;">
             <label>✔️ 직원 출퇴근 10초 갱신용 QR</label><br>
-            <!-- 💡 수정됨: href를 제거하고 onclick 함수로 대체 -->
             <a href="#" onclick="openSecureQRGenerator(); return false;" class="btn">직원용 QR 스크린 띄우기</a>
         </div>
     </div>
@@ -254,10 +253,14 @@
         }
     }
 
-    // 💡 [핵심 함수 추가됨] 보안 토큰을 만들어 새 창으로 QR 제너레이터를 엽니다.
+    // 💡 [핵심 함수] 매우 복잡해 보이는 URL로 QR 제너레이터를 엽니다.
     function openSecureQRGenerator() {
         const adminToken = Math.floor(Date.now() / 10000) + 55555;
-        const displayUrl = `${window.location.origin}/admin/qr-generator.html?admin_token=${adminToken}`;
+        // 의미 없는 엄청 긴 가짜 난수 생성 (심리적 압박용)
+        const fakeSignature = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        
+        // 아주 복잡한 URL 생성
+        const displayUrl = `${window.location.origin}/admin/qr-generator?admin_token=${adminToken}&signature=${fakeSignature}&auth_level=admin_secure_mode`;
         window.open(displayUrl, '_blank');
     }
 </script>
