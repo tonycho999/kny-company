@@ -4,28 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>공용 출퇴근 QR 코드</title>
-
+    
     <script>
-        // 💡 [핵심 보안] 화면이 열리자마자 토큰을 검사합니다.
+        // 💡 주소창을 지우지 않고 복잡한 파라미터를 그대로 노출시킵니다!
         const urlParams = new URLSearchParams(window.location.search);
         const adminToken = urlParams.get('admin_token');
         
-        // 올바른 루트로 들어온 것이 아니라면 즉시 차단합니다.
+        // 토큰이 아예 없으면 즉시 차단
         if (!adminToken) {
-            document.write('<h2 style="color:red; text-align:center; margin-top:50px;">🚫 비정상적인 접근입니다. (관리자 페이지를 통해서만 열 수 있습니다.)</h2>');
-            window.stop(); // 페이지 렌더링 중지
-        }
-
-        // 토큰 시간 검증 (50초 이상 지난 링크로 들어오면 차단 - 즐겨찾기/복사 방지)
-        const currentSlice = Math.floor(Date.now() / 10000);
-        const tokenDiff = currentSlice - (parseInt(adminToken) - 55555);
-        if (tokenDiff < 0 || tokenDiff > 5) { 
-            document.write('<h2 style="color:red; text-align:center; margin-top:50px;">🚫 만료된 접근 링크입니다. 관리자 대시보드에서 다시 띄워주세요.</h2>');
+            document.write('<h2 style="color:red; text-align:center; margin-top:50px;">🚫 접근 권한이 없습니다.<br><span style="font-size:14px; color:#7f8c8d;">보안 서명이 포함된 URL이 필요합니다.</span></h2>');
             window.stop();
         }
 
-        // 검증을 통과했다면 즉시 주소창에서 토큰을 지워버려 복사를 불가능하게 만듭니다.
-        window.history.replaceState({}, document.title, window.location.pathname);
+        // 토큰 시간 검증 (열어둔 지 50초가 지난 과거의 링크로 들어오면 차단)
+        const currentSlice = Math.floor(Date.now() / 10000);
+        const tokenDiff = currentSlice - (parseInt(adminToken) - 55555);
+        
+        if (tokenDiff < 0 || tokenDiff > 5) { 
+            document.write('<h2 style="color:red; text-align:center; margin-top:50px;">🚫 보안 토큰이 만료되었습니다.<br><span style="font-size:14px; color:#7f8c8d;">관리자 대시보드에서 새 창을 다시 열어주세요.</span></h2>');
+            window.stop();
+        }
     </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
