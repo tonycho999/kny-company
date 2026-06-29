@@ -6,20 +6,11 @@
     <title>공용 출퇴근 QR 코드</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        body {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            height: 100vh; background-color: #ecf0f1; margin: 0; font-family: 'Noto Sans KR', sans-serif;
-        }
-        .qr-container {
-            background: white; padding: 40px; border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center;
-        }
+        body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #ecf0f1; margin: 0; font-family: 'Noto Sans KR', sans-serif; }
+        .qr-container { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; }
         h1 { color: #2c3e50; margin-bottom: 10px; font-size: 28px; }
         p.subtitle { color: #7f8c8d; margin-bottom: 30px; }
-        #qrcode {
-            display: flex; justify-content: center; margin: 20px 0;
-            padding: 20px; border: 5px solid #3498db; border-radius: 10px;
-        }
+        #qrcode { display: flex; justify-content: center; margin: 20px 0; padding: 20px; border: 5px solid #3498db; border-radius: 10px; }
         .timer-text { font-size: 20px; font-weight: bold; color: #e74c3c; margin-top: 15px; }
     </style>
 </head>
@@ -27,44 +18,34 @@
     <div class="qr-container">
         <h1>출퇴근 인증 QR</h1>
         <p class="subtitle">스마트폰 카메라로 아래 QR 코드를 스캔하세요.</p>
-        
         <div id="qrcode"></div>
-        
         <div class="timer-text" id="timer">QR 갱신까지: 10초</div>
     </div>
     <script>
         let qrcode = new QRCode(document.getElementById("qrcode"), {
-            width: 300,
-            height: 300,
-            colorDark : "#000000",
-            colorLight : "#ffffff",
-            correctLevel : QRCode.CorrectLevel.H
+            width: 300, height: 300, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H
         });
 
-        // 10초 주기 토큰 생성 (난독화 +83749 적용)
         function generateToken() {
-            const timeSlice = Math.floor(Date.now() / 10000) + 83749;
-            return timeSlice;
+            return Math.floor(Date.now() / 10000) + 83749;
         }
 
         function generateQRData() {
             const token = generateToken();
             const domain = window.location.origin; 
-            return `${domain}/employee/scan.html?token=${token}`;
+            // 💡 .html 확장자를 제거하여 URL을 더욱 깔끔하게 만듭니다.
+            return `${domain}/employee/scan?token=${token}`;
         }
 
         function updateQR() {
-            const qrData = generateQRData();
             qrcode.clear();
-            qrcode.makeCode(qrData);
+            qrcode.makeCode(generateQRData());
         }
 
         setInterval(() => {
             const seconds = new Date().getSeconds();
             const remain = 10 - (seconds % 10); 
-            
             document.getElementById('timer').innerText = `QR 갱신까지: ${remain}초`;
-            
             if (remain === 10) updateQR();
         }, 1000);
 
