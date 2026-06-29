@@ -2,50 +2,177 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>관리자 대시보드 - 출퇴근 관리</title>
-    <link rel="stylesheet" href="/css/admin.css">
+    <title>KNY Company - 관리자 통합 대시보드</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background: #f1f2f6; }
+        .sidebar { width: 260px; background: #2c3e50; color: white; padding: 20px; }
+        .sidebar h2 { text-align: center; margin-bottom: 30px; font-size: 20px; }
+        .menu-item { padding: 15px; margin-bottom: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .menu-item:hover, .menu-item.active { background: #34495e; color: #3498db; }
+        .main-content { flex: 1; padding: 40px; overflow-y: auto; }
+        .panel-section { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .hidden { display: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border-bottom: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #f8f9fa; }
+        .form-group { margin-bottom: 15px; }
+        label { display:block; margin-bottom:5px; font-weight:bold; }
+        input, textarea, select { width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; box-sizing:border-box; }
+        .btn { padding: 10px 20px; background: #3498db; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; }
+    </style>
 </head>
 <body>
-    <div class="admin-container">
-        <h1>출퇴근 기록 관리</h1>
-        
-        <div class="nav-links">
-            <a href="/admin/index.html" style="text-decoration: underline; color: #2c3e50;">📅 출퇴근 기록 조회</a>
-            <a href="/admin/settings.html">⚙️ 직원 관리 설정</a>
-            <a href="/admin/qr-generator.html">📱 보안 QR 코드 생성</a> 
-        </div>
 
-        <div class="header-controls" style="margin-bottom: 20px;">
-            <div>
-                <label for="datePicker" style="font-weight: bold; margin-right: 10px;">조회 조건:</label>
-                <input type="date" id="datePicker">
-                
-                <select id="teamFilter" style="margin-left: 10px; padding: 5px; height: 32px;">
-                    <option value="전체">전체 부서</option>
-                </select>
-                <button id="btnSearch" style="margin-left: 5px; padding: 5px 15px; height: 32px; cursor: pointer; background-color: #34495e; color: white; border: none; border-radius: 4px;">조회</button>
-            </div>
-        </div>
+<div class="sidebar">
+    <h2>KNY Admin Panel</h2>
+    <div class="menu-item active" onclick="switchTab('portfolio-sec')">🖼️ 포트폴리오 관리</div>
+    <div class="menu-item" onclick="switchTab('employee-sec')">👥 직원 & 근태 관리</div>
+    <div class="menu-item" onclick="switchTab('waiting-sec')">🌊 실시간 웨이팅 관리</div>
+    <div class="menu-item" onclick="switchTab('qr-sec')">🔲 시스템 QR 코드 발급</div>
+</div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>사원번호</th>
-                    <th>팀명</th> <th>이름</th>
-                    <th>연락처</th>
-                    <th>출근 시간</th>
-                    <th>퇴근 시간</th>
-                </tr>
-            </thead>
-            <tbody id="attendance-body">
-                <tr>
-                    <td colspan="6" style="text-align: center; color: #7f8c8d;">날짜와 부서를 선택하고 조회 버튼을 누르세요.</td>
-                </tr>
-            </tbody>
+<div class="main-content">
+    
+    <div id="portfolio-sec" class="panel-section">
+        <h2>홈페이지 포트폴리오 추가</h2>
+        <form onsubmit="addPortfolio(event)" style="max-width:500px; margin-top:20px;">
+            <div class="form-group"><label>행사 타이틀</label><input type="text" id="p-title" required></div>
+            <div class="form-group"><label>상세 설명</label><textarea id="p-desc" rows="4" required></textarea></div>
+            <div class="form-group"><label>현장 이미지 주소(URL)</label><input type="text" id="p-img" placeholder="https://..."></div>
+            <button class="btn" type="submit">실적 저장 및 홈페이지 노출</button>
+        </form>
+    </div>
+
+    <div id="employee-sec" class="panel-section hidden">
+        <h2>임직원 명부 등록</h2>
+        <form onsubmit="registerEmployee(event)" style="max-width:400px; display:flex; gap:10px; margin-bottom:30px;">
+            <input type="text" id="e-id" placeholder="사번" required>
+            <input type="text" id="e-name" placeholder="이름" required>
+            <button class="btn" type="submit">등록</button>
+        </form>
+        <h2>오늘의 근태 현황 조회</h2>
+        <table id="attendance-table">
+            <thead><tr><th>사번</th><th>이름</th><th>출근시간</th><th>퇴근시간</th></tr></thead>
+            <tbody></tbody>
         </table>
     </div>
 
-    <script src="/js/admin.js"></script>
+    <div id="waiting-sec" class="panel-section hidden">
+        <h2>행사장별 대기열 통제 관리</h2>
+        <div class="form-group" style="max-width:300px; margin-top:10px;">
+            <label>지휘 대상 행사장 선택</label>
+            <select id="waiting-loc-selector" onchange="loadWaitlistData()"></select>
+        </div>
+        <table>
+            <thead><tr><th>대기번호</th><th>고객명</th><th>인원</th><th>연락처</th><th>상태</th><th>호출 조작</th></tr></thead>
+            <tbody id="waitlist-tbody"></tbody>
+        </table>
+    </div>
+
+    <div id="qr-sec" class="panel-section hidden">
+        <h2>시스템 진입 QR 코드 다운로드</h2>
+        <div class="form-group" style="max-width:400px; margin-top:20px;">
+            <label>1. 직원 출퇴근 보안용 QR 코드 링크</label>
+            <a href="/employee/qr-generator.html" target="_blank" style="color:#3498db; font-weight:bold;">[이동] 10초 주기 가동형 QR 화면 열기</a>
+        </div>
+        <hr style="margin:30px 0; border:0; border-top:1px solid #eee;">
+        <div class="form-group" style="max-width:400px;">
+            <label>2. 손님용 접수 QR 코드 발급 (장소별 매칭)</label>
+            <select id="qr-loc-selector" onchange="generateCustomerQR()"></select>
+            <div id="qr-result-box" style="margin-top:20px; text-align:center; padding:20px; background:#f8f9fa; border-radius:8px;">
+                <p style="color:#7f8c8d;">행사장을 선택하면 고유 접수 QR 배치표가 생성됩니다.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function switchTab(sectionId) {
+        document.querySelectorAll('.panel-section').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+        document.getElementById(sectionId).classList.remove('hidden');
+        event.currentTarget.classList.add('active');
+        
+        if(sectionId === 'waiting-sec' || sectionId === 'qr-sec') loadLocations(sectionId);
+        if(sectionId === 'employee-sec') loadAttendance();
+    }
+
+    // 행사장 목록 동적 연동 로직
+    async function loadLocations(tabId) {
+        const res = await fetch('/api/locations');
+        const list = await res.json();
+        const selector = tabId === 'waiting-sec' ? document.getElementById('waiting-loc-selector') : document.getElementById('qr-loc-selector');
+        
+        selector.innerHTML = list.map(loc => `<option value="${loc.id}">${loc.name}</option>`).join('');
+        if(tabId === 'waiting-sec') loadWaitlistData();
+        if(tabId === 'qr-sec') generateCustomerQR();
+    }
+
+    // 특정 행사장 고객 대기 명부 로드 및 사장님 호출 액션
+    async function loadWaitlistData() {
+        const locId = document.getElementById('waiting-loc-selector').value;
+        if(!locId) return;
+        const res = await fetch(`/api/admin/waitlist?locationId=${locId}`);
+        const list = await res.json();
+        
+        document.getElementById('waitlist-tbody').innerHTML = list.map(item => `
+            <tr>
+                <td>${item.waiting_number}번</td>
+                <td>${item.name}</td>
+                <td>${item.count}명</td>
+                <td>${item.phone}</td>
+                <td><b>${item.status}</b></td>
+                <td>
+                    <button class="btn" style="background:#2ecc71; padding:5px 10px; font-size:12px;" onclick="callCustomer(${item.id})">호출 및 알림톡</button>
+                    <button class="btn" style="background:#95a5a6; padding:5px 10px; font-size:12px;" onclick="completeCustomer(${item.id})">완료</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function callCustomer(id) {
+        // 백엔드로 호출 요청 전송 (여기서 중계사 API를 통해 알림톡이 트리거됩니다)
+        await fetch(`/api/admin/waitlist/call`, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ id })
+        });
+        alert('해당 손님 호출이 전송되었으며 모바일 기기 효과음이 트리거됩니다.');
+        loadWaitlistData();
+    }
+
+    function generateCustomerQR() {
+        const locId = document.getElementById('qr-loc-selector').value;
+        const selText = document.getElementById('qr-loc-selector').options[document.getElementById('qr-loc-selector').selectedIndex].text;
+        const targetUrl = `${window.location.origin}/waiting/register.html?locationId=${locId}`;
+        
+        // 구글 차트 API를 사용해 행사장별 고유 경로를 갖는 QR 자동 바인딩
+        document.getElementById('qr-result-box').innerHTML = `
+            <h4 style="margin-bottom:10px; color:#2c3e50;">${selText} 전용 QR 현장 부착물</h4>
+            <img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(targetUrl)}&choe=UTF-8" alt="QR">
+            <p style="font-size:12px; margin-top:5px; color:#7f8c8d;">주소: ${targetUrl}</p>
+        `;
+    }
+
+    // 포트폴리오 추가 처리 API 바인딩
+    async function addPortfolio(e) {
+        e.preventDefault();
+        const payload = {
+            title: document.getElementById('p-title').value,
+            description: document.getElementById('p-desc').value,
+            image_url: document.getElementById('p-img').value
+        };
+        await fetch('/api/portfolios', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(payload)
+        });
+        alert('포트폴리오 실적이 성공적으로 추가되어 메인 페이지에 반영되었습니다.');
+        document.getElementById('p-title').value = '';
+        document.getElementById('p-desc').value = '';
+        document.getElementById('p-img').value = '';
+    }
+</script>
 </body>
 </html>
