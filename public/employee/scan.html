@@ -6,19 +6,14 @@
     <title>KNY Company - 출퇴근 등록 시스템</title>
     
     <script>
-        // 💡 [핵심] 화면이 그려지기 전, 가장 먼저 주소창의 파라미터(?token=...)를 흔적도 없이 지웁니다.
-        // 스마트폰 앱 내장 브라우저에서도 에러가 나지 않도록 try-catch로 안전하게 감쌉니다.
         const urlParams = new URLSearchParams(window.location.search);
         const incomingToken = urlParams.get('token');
         
         if (incomingToken) {
-            // 메모리에 임시 저장
             try { sessionStorage.setItem('scan_token', incomingToken); } catch(e) {}
-            // URL 주소창에서 파라미터 깔끔하게 삭제 (직원이 복사하지 못하게 함)
             try { window.history.replaceState(null, null, window.location.pathname); } catch(e) {}
         }
     </script>
-
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; background-color: #f5f6fa; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .container { background: white; padding: 40px 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; max-width: 400px; width: 100%; margin: 20px; }
@@ -38,7 +33,7 @@
         .error { color: #e74c3c; }
         .info { color: #7f8c8d; }
         .warning { color: #f39c12; }
-        .hidden { display: none; }
+        .hidden { display: none !important; }
         .reset-link { margin-top: 30px; display: inline-block; color: #b2bec3; font-size: 13px; text-decoration: underline; cursor: pointer; }
     </style>
 </head>
@@ -51,7 +46,6 @@
             <input type="text" id="employeeId" placeholder="사원번호를 입력하세요">
             <button class="button btn-blue" onclick="handleManualSubmit()">사원번호 인증하기</button>
         </div>
-
         <div id="choice-form" class="hidden">
             <span class="emp-name-tag" id="target-emp-name">○○○ 님</span>
             <p id="action-guide" style="color: #7f8c8d; font-size: 16px;">오늘 근무를 시작하시겠습니까?</p>
@@ -60,11 +54,9 @@
                 <button id="btn-clock-out" class="btn-out hidden" onclick="submitAttendance('out')">🌙 퇴근하기</button>
             </div>
         </div>
-
         <div id="status-area">
             <p class="message info" id="status-text">🔄 시스템에 안전하게 연결 중입니다...</p>
         </div>
-
         <span id="reset-btn" class="reset-link hidden" onclick="resetSavedId()">사원번호 재설정</span>
     </div>
 
@@ -76,28 +68,23 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // 숨겨둔 토큰을 다시 꺼내옴 (새로고침 방어)
                 let rawToken = null;
                 try { rawToken = sessionStorage.getItem('scan_token'); } catch(e) {}
                 
-                // 만약 세션저장소가 안먹히는 특수 브라우저라면 url에서 다시 시도
                 if(!rawToken) {
                     rawToken = new URLSearchParams(window.location.search).get('token');
                 }
-
                 if (!rawToken) {
                     showMsg('❌ 올바르지 않은 접근입니다. (QR 코드를 다시 스캔하세요.)', 'error');
                     return;
                 }
 
-                // 토큰 검증: 순수 KST 시간 기준 (난독화 없음)
                 const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
                 const currentSlice = Math.floor(nowKst.getTime() / 10000);
                 globalRealToken = parseInt(rawToken);
                 
                 const tokenDiff = currentSlice - globalRealToken;
                 
-                // 50초 지난 토큰은 만료
                 if (isNaN(tokenDiff) || tokenDiff < 0 || tokenDiff > 5) { 
                     showMsg('❌ 만료된 QR코드입니다. 입구의 최신 화면을 다시 스캔해주세요.', 'error');
                     return;
@@ -134,8 +121,9 @@
         async function openChoiceForm(employeeId) {
             showMsg('🔄 직원 및 근태 기록을 조회 중입니다...', 'info');
             try {
+                // 1. 직원 존재 여부 확인
                 const resEmp = await fetch('/api/employees');
-                if (!resEmp.ok) throw new Error("API 연결 실패");
+                if (!resEmp.ok) throw new Error("API 연결 실패(직원조회)");
                 const employees = await resEmp.json();
                 
                 const currentEmp = employees.find(emp => emp.employee_id === employeeId);
@@ -146,21 +134,32 @@
                     return;
                 }
 
+                // 2. 당일 근태 기록 조회 (안전하게 방어 코드 추가)
                 const todayKst = new Date(Date.now() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
                 const resAtt = await fetch(`/api/attendance?date=${todayKst}`);
-                if (!resAtt.ok) throw new Error("API 연결 실패");
-                const attendances = await resAtt.json();
                 
-                const myTodayRecord = attendances.find(att => att.employee_id === employeeId);
-                
-                if (myTodayRecord) {
-                    if (myTodayRecord.clock_in) todayClockIn = true;
-                    if (myTodayRecord.clock_out) todayClockOut = true;
+                todayClockIn = false;
+                todayClockOut = false;
+
+                if (resAtt.ok) {
+                    const attendances = await resAtt.json();
+                    if (Array.isArray(attendances)) {
+                        const myTodayRecord = attendances.find(att => String(att.employee_id) === String(employeeId));
+                        if (myTodayRecord) {
+                            if (myTodayRecord.clock_in && myTodayRecord.clock_in.trim() !== '') todayClockIn = true;
+                            if (myTodayRecord.clock_out && myTodayRecord.clock_out.trim() !== '') todayClockOut = true;
+                        }
+                    }
                 }
 
+                // 3. UI 업데이트 (정상적으로 데이터가 처리되었을 때만 실행됨)
                 document.getElementById('target-emp-name').innerText = `✨ ${currentEmp.name} 님`;
                 document.getElementById('status-area').classList.add('hidden');
                 document.getElementById('choice-form').classList.remove('hidden');
+                
+                // 모든 버튼을 일단 숨김
+                document.getElementById('btn-clock-in').classList.add('hidden');
+                document.getElementById('btn-clock-out').classList.add('hidden');
 
                 if (!todayClockIn) {
                     document.getElementById('action-guide').innerText = '☀️ 오늘 근무를 시작하시겠습니까?';
@@ -168,12 +167,13 @@
                 } else if (todayClockIn && !todayClockOut) {
                     document.getElementById('action-guide').innerText = '🌙 오늘 근무를 마치고 퇴근하시겠습니까?';
                     document.getElementById('btn-clock-out').classList.remove('hidden');
-                } else if (todayClockIn && todayClockOut) {
+                } else {
                     document.getElementById('choice-form').classList.add('hidden');
                     showMsg('🎉 오늘 하루도 수고 많으셨습니다!\n(출퇴근 처리가 모두 완료된 상태입니다)', 'success');
                 }
             } catch (e) {
-                showMsg('❌ 서버 통신 중 오류가 발생했습니다.', 'error');
+                console.error("에러 원인:", e);
+                showMsg('❌ 서버 통신 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
             }
         }
 
@@ -182,7 +182,6 @@
             showMsg('⏳ 출퇴근 기록을 전송하는 중입니다...', 'info');
 
             try {
-                // 토큰을 그대로 백엔드에 전송 (백엔드와 일치)
                 const response = await fetch('/api/attendance', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -209,6 +208,13 @@
             } catch (error) {
                 showMsg('❌ 서버 전송 오류가 발생했습니다.', 'error');
             }
+        }
+
+        function showMsg(text, className) {
+            document.getElementById('status-area').classList.remove('hidden');
+            const txtNode = document.getElementById('status-text');
+            txtNode.innerText = text;
+            txtNode.className = `message ${className}`;
         }
 
         function resetSavedId() {
