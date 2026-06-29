@@ -253,14 +253,16 @@
         }
     }
 
-    // 💡 [핵심 함수] 매우 복잡해 보이는 URL로 QR 제너레이터를 엽니다.
+    // 💡 [수정] 복잡한 URL 생성은 유지하되, KST 기준 순수 시간(토큰)만 넘기도록 수정
     function openSecureQRGenerator() {
-        const adminToken = Math.floor(Date.now() / 10000) + 55555;
+        const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
+        const adminToken = Math.floor(nowKst.getTime() / 10000);
+        
         // 의미 없는 엄청 긴 가짜 난수 생성 (심리적 압박용)
         const fakeSignature = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         
         // 아주 복잡한 URL 생성
-        const displayUrl = `${window.location.origin}/admin/qr-generator?admin_token=${adminToken}&signature=${fakeSignature}&auth_level=admin_secure_mode`;
+        const displayUrl = `${window.location.origin}/admin/qr-generator.html?admin_token=${adminToken}&signature=${fakeSignature}&auth_level=admin_secure_mode`;
         window.open(displayUrl, '_blank');
     }
 </script>
