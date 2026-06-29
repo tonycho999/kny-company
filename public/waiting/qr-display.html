@@ -17,7 +17,6 @@
     </style>
 </head>
 <body>
-
     <div class="qr-container">
         <h1>대기 접수 QR 코드</h1>
         <div class="team-tag" id="team-title">📍 행사장 확인 중...</div>
@@ -29,7 +28,6 @@
         </div>
         <p class="notice">⚠️ 원격 접수 방지를 위해 10초마다 코드가 변경됩니다.<br>카메라 앱으로 스캔 후 즉시 접수해 주세요.</p>
     </div>
-
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const teamName = urlParams.get('team');
@@ -41,27 +39,20 @@
             }
             document.getElementById('team-title').innerText = `📍 ${decodeURIComponent(teamName)}`;
             
-            // 최초 QR 생성 및 10초 타이머 가동
             generateSecureQR();
             setInterval(generateSecureQR, 10000);
 
-            // 타이머 바 애니메이션 리셋 리스너
             setInterval(() => {
                 const prog = document.getElementById('progress');
                 prog.style.animation = 'none';
-                prog.offsetHeight; /* 트리거 바인딩 리셋용 */
+                prog.offsetHeight; 
                 prog.style.animation = null;
             }, 10000);
         });
 
         function generateSecureQR() {
-            // 현재 시간을 10초 단위로 나누어 유일한 타임스탬프 값 생성
             const timeSlice = Math.floor(Date.now() / 10000);
-            
-            // 손님이 접속할 주소 뒤에 [팀명]과 [10초짜리 보안 토큰]을 함께 구워버림
             const targetUrl = `${window.location.origin}/waiting/register.html?team=${encodeURIComponent(teamName)}&token=${timeSlice}`;
-            
-            // 구글 QR 생성 API 바인딩
             document.getElementById('qr-image').src = `https://chart.googleapis.com/chart?chs=250x250&cht=qr&chl=${encodeURIComponent(targetUrl)}&choe=UTF-8`;
         }
     </script>
