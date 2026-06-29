@@ -6,11 +6,16 @@
     <title>KNY Company - 출퇴근 등록 시스템</title>
     
     <script>
+        // 💡 [핵심] 화면이 그려지기 전, 가장 먼저 주소창의 파라미터(?token=...)를 흔적도 없이 지웁니다.
+        // 스마트폰 앱 내장 브라우저에서도 에러가 나지 않도록 try-catch로 안전하게 감쌉니다.
         const urlParams = new URLSearchParams(window.location.search);
         const incomingToken = urlParams.get('token');
+        
         if (incomingToken) {
-            sessionStorage.setItem('scan_token', incomingToken);
-            window.history.replaceState({}, document.title, window.location.pathname);
+            // 메모리에 임시 저장
+            try { sessionStorage.setItem('scan_token', incomingToken); } catch(e) {}
+            // URL 주소창에서 파라미터 깔끔하게 삭제 (직원이 복사하지 못하게 함)
+            try { window.history.replaceState(null, null, window.location.pathname); } catch(e) {}
         }
     </script>
 
@@ -64,31 +69,43 @@
     </div>
 
     <script>
-        // 들어온 토큰 그대로 사용
-        let rawToken = sessionStorage.getItem('scan_token');
         let globalEmployeeId = ""; 
+        let globalRealToken = null; 
         let todayClockIn = false;
         let todayClockOut = false;
 
         document.addEventListener('DOMContentLoaded', async () => {
-            if (!rawToken) {
-                showMsg('❌ 올바르지 않은 접근입니다. (QR 코드가 만료되었거나 없습니다.)', 'error');
-                return;
-            }
-
             try {
-                // 💡 난독화 및 복호화 제거: 순수 KST 시간 차이만 계산
+                // 숨겨둔 토큰을 다시 꺼내옴 (새로고침 방어)
+                let rawToken = null;
+                try { rawToken = sessionStorage.getItem('scan_token'); } catch(e) {}
+                
+                // 만약 세션저장소가 안먹히는 특수 브라우저라면 url에서 다시 시도
+                if(!rawToken) {
+                    rawToken = new URLSearchParams(window.location.search).get('token');
+                }
+
+                if (!rawToken) {
+                    showMsg('❌ 올바르지 않은 접근입니다. (QR 코드를 다시 스캔하세요.)', 'error');
+                    return;
+                }
+
+                // 토큰 검증: 순수 KST 시간 기준 (난독화 없음)
                 const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
                 const currentSlice = Math.floor(nowKst.getTime() / 10000);
-                const tokenDiff = currentSlice - parseInt(rawToken);
+                globalRealToken = parseInt(rawToken);
                 
-                // 에러 방지를 위해 여유 시간 5 적용 (약 50초내 허용)
-                if (tokenDiff < 0 || tokenDiff > 5) { 
+                const tokenDiff = currentSlice - globalRealToken;
+                
+                // 50초 지난 토큰은 만료
+                if (isNaN(tokenDiff) || tokenDiff < 0 || tokenDiff > 5) { 
                     showMsg('❌ 만료된 QR코드입니다. 입구의 최신 화면을 다시 스캔해주세요.', 'error');
                     return;
                 }
 
-                const savedId = localStorage.getItem('savedEmployeeId');
+                let savedId = null;
+                try { savedId = localStorage.getItem('savedEmployeeId'); } catch(e) { }
+
                 if (savedId) {
                     globalEmployeeId = savedId;
                     document.getElementById('reset-btn').classList.remove('hidden');
@@ -98,7 +115,7 @@
                     document.getElementById('auth-form').classList.remove('hidden');
                 }
             } catch (err) {
-                showMsg('❌ 시스템 오류가 발생했습니다.', 'error');
+                showMsg('❌ 시스템 초기화 중 알 수 없는 오류가 발생했습니다.', 'error');
             }
         });
 
@@ -106,9 +123,7 @@
             const employeeId = document.getElementById('employeeId').value.trim();
             if (!employeeId) return alert('사원번호를 입력해주세요.');
 
-            if (confirm('입력하신 사원번호를 이 휴대폰에 저장하시겠습니까?')) {
-                localStorage.setItem('savedEmployeeId', employeeId);
-            }
+            try { localStorage.setItem('savedEmployeeId', employeeId); } catch(e) { }
             
             globalEmployeeId = employeeId;
             document.getElementById('auth-form').classList.add('hidden');
@@ -120,21 +135,22 @@
             showMsg('🔄 직원 및 근태 기록을 조회 중입니다...', 'info');
             try {
                 const resEmp = await fetch('/api/employees');
-                if (!resEmp.ok) throw new Error("API 연동 오류");
+                if (!resEmp.ok) throw new Error("API 연결 실패");
                 const employees = await resEmp.json();
                 
                 const currentEmp = employees.find(emp => emp.employee_id === employeeId);
                 
                 if (!currentEmp) {
                     showMsg('❌ 등록되지 않은 사원번호입니다. 사번을 재설정해 주세요.', 'error');
+                    try { localStorage.removeItem('savedEmployeeId'); } catch(e) {}
                     return;
                 }
 
                 const todayKst = new Date(Date.now() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
                 const resAtt = await fetch(`/api/attendance?date=${todayKst}`);
-                if (!resAtt.ok) throw new Error("API 연동 오류");
-                
+                if (!resAtt.ok) throw new Error("API 연결 실패");
                 const attendances = await resAtt.json();
+                
                 const myTodayRecord = attendances.find(att => att.employee_id === employeeId);
                 
                 if (myTodayRecord) {
@@ -166,11 +182,11 @@
             showMsg('⏳ 출퇴근 기록을 전송하는 중입니다...', 'info');
 
             try {
-                // 💡 [수정] 복잡한 계산 없이 들어왔던 토큰(rawToken)을 그대로 백엔드에 줍니다.
+                // 토큰을 그대로 백엔드에 전송 (백엔드와 일치)
                 const response = await fetch('/api/attendance', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ employeeId: globalEmployeeId, type, token: rawToken })
+                    body: JSON.stringify({ employeeId: globalEmployeeId, type, token: globalRealToken })
                 });
 
                 const result = await response.json();
@@ -184,7 +200,7 @@
                     try {
                         const audio = type === 'in' ? new Audio('/sounds/clock_in.mp3') : new Audio('/sounds/clock_out.mp3');
                         await audio.play();
-                    } catch(e){}
+                    } catch(e) { }
 
                     showMsg(`✅ ${result.name}님, ${hours}시 ${minutes}분에 ${typeText} 처리되었습니다.`, 'success');
                 } else {
@@ -197,8 +213,8 @@
 
         function resetSavedId() {
             if (confirm('저장된 사원번호를 삭제하시겠습니까?')) {
-                localStorage.removeItem('savedEmployeeId');
-                sessionStorage.removeItem('scan_token');
+                try { localStorage.removeItem('savedEmployeeId'); } catch(e) {}
+                try { sessionStorage.removeItem('scan_token'); } catch(e) {}
                 window.location.reload();
             }
         }
