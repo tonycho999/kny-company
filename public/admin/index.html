@@ -29,15 +29,15 @@
 <body>
 <div class="sidebar">
     <h2>KNY Admin Panel</h2>
-    <div class="menu-item active" onclick="switchTab('portfolio-sec')">🖼️ 포트폴리오 (블로그형)</div>
+    <div class="menu-item active" onclick="switchTab('portfolio-sec')">🖼️ 포트폴리오 관리</div>
     <div class="menu-item" onclick="switchTab('employee-sec')">👥 직원 명부 관리</div>
-    <div class="menu-item" onclick="switchTab('attendance-sec')">⏰ 오늘의 근태 현황</div>
-    <div class="menu-item" onclick="switchTab('waiting-sec')">🌊 실시간 웨이팅 관리</div>
-    <div class="menu-item" onclick="switchTab('qr-sec')">🔲 시스템 QR 발급</div>
+    <div class="menu-item" onclick="switchTab('attendance-sec')">⏰ 출퇴근 근태 현황</div>
+    <div class="menu-item" onclick="switchTab('qr-sec')">🔲 직원 출퇴근용 QR</div>
 </div>
+
 <div class="main-content">
     <div id="portfolio-sec" class="panel-section">
-        <h2>✨ 홈페이지 포트폴리오 작성 (블로그형)</h2>
+        <h2>✨ 홈페이지 포트폴리오 작성</h2>
         <p style="color:#7f8c8d; margin-bottom: 20px;">이미지는 700KB 이하만 본문에 삽입할 수 있습니다.</p>
         <div class="form-group">
             <label>행사 타이틀</label>
@@ -55,7 +55,7 @@
         <form id="employee-form" onsubmit="registerEmployee(event)" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:15px; margin-bottom:30px; background:#f8f9fa; padding:20px; border-radius:8px;">
             <div><label>사원번호</label><input type="text" id="e-id" required></div>
             <div><label>이름</label><input type="text" id="e-name" required></div>
-            <div><label>소속 팀명 (행사장명)</label><input type="text" id="e-team" placeholder="입력 시 웨이팅 장소 생성됨"></div>
+            <div><label>소속 팀명 (행사장명)</label><input type="text" id="e-team" placeholder="입력 시 팀 자동 생성됨"></div>
             <div><label>연락처</label><input type="text" id="e-phone"></div>
             <div><label>이메일 주소</label><input type="text" id="e-email"></div>
             <div style="display:flex; align-items:flex-end;"><button class="btn" type="submit" style="width:100%;">직원 등록하기</button></div>
@@ -75,28 +75,12 @@
         </table>
     </div>
 
-    <div id="waiting-sec" class="panel-section hidden">
-        <h2>행사장별 대기열 통제 관리</h2>
-        <div class="form-group" style="max-width:300px;">
-            <label>지휘 대상 행사장(팀명) 선택</label>
-            <select id="waiting-team-selector" onchange="loadWaitlistData()"></select>
-        </div>
-        <table>
-            <thead><tr><th>번호</th><th>고객명</th><th>인원</th><th>연락처</th><th>상태</th><th>조작</th></tr></thead>
-            <tbody id="waitlist-tbody"></tbody>
-        </table>
-    </div>
-
     <div id="qr-sec" class="panel-section hidden">
         <h2>시스템 QR 코드 발급</h2>
+        <p style="color:#7f8c8d; margin-bottom: 20px;">현장 웨이팅용 QR은 [직원용 웨이팅 통제 시스템] 페이지에서 발급 가능합니다.</p>
         <div class="form-group" style="margin-bottom: 40px;">
-            <label>1. 직원 출퇴근 10초 갱신용 QR</label><br>
+            <label>✔️ 직원 출퇴근 10초 갱신용 QR</label><br>
             <a href="/admin/qr-generator.html" target="_blank" class="btn">직원용 QR 스크린 띄우기</a>
-        </div>
-        <div class="form-group">
-            <label>2. 손님 대기 접수용 10초 갱신형 QR</label>
-            <select id="qr-team-selector" onchange="generateCustomerQR()" style="max-width:300px;"></select>
-            <div id="qr-result-box" style="margin-top:15px; padding:20px; background:#f8f9fa;">행사장을 선택해주세요.</div>
         </div>
     </div>
 </div>
@@ -156,9 +140,7 @@
                 alert('포트폴리오가 홈페이지에 게시되었습니다.');
                 document.getElementById('p-title').value = '';
                 quill.setContents([]);
-            } else {
-                alert('서버 저장 실패 (상태코드: ' + res.status + ')');
-            }
+            } else { alert('서버 저장 실패'); }
         } catch(e) { alert('서버 통신 오류가 발생했습니다.'); }
     }
 
@@ -170,7 +152,6 @@
         
         if(sectionId === 'employee-sec') loadEmployees();
         if(sectionId === 'attendance-sec') loadAttendance();
-        if(sectionId === 'waiting-sec' || sectionId === 'qr-sec') loadActiveTeams(sectionId);
     }
 
     async function registerEmployee(e) {
@@ -196,9 +177,7 @@
                 const errData = await res.json().catch(() => ({}));
                 alert('등록 실패: ' + (errData.error || '서버 응답 오류'));
             }
-        } catch(err) {
-            alert('서버와 통신할 수 없습니다.');
-        }
+        } catch(err) { alert('서버와 통신할 수 없습니다.'); }
     }
 
     async function loadEmployees() {
@@ -240,12 +219,8 @@
                 headers: {'Content-Type':'application/json'}, 
                 body: JSON.stringify({ employee_id: empId, status: newStatus }) 
             });
-            if(res.ok) {
-                alert('직원 상태가 변경되었습니다.');
-                loadEmployees();
-            } else {
-                alert('상태 변경 실패');
-            }
+            if(res.ok) loadEmployees();
+            else alert('상태 변경 실패');
         } catch(e) { alert('통신 오류'); }
     }
 
@@ -256,9 +231,7 @@
             if(res.ok) {
                 alert('성공적으로 삭제되었습니다.');
                 loadEmployees();
-            } else {
-                alert('삭제 실패');
-            }
+            } else { alert('삭제 실패'); }
         } catch(e) { alert('통신 오류'); }
     }
 
@@ -278,62 +251,6 @@
         } catch(e) {
             document.getElementById('attendance-tbody').innerHTML = `<tr><td colspan="4" style="color:#e74c3c; text-align:center;">근태 데이터를 로드하지 못했습니다.</td></tr>`;
         }
-    }
-
-    // 💡 [핵심 수정 구간] 직원 목록에서 고유한 행사장을 프론트에서 직접 추출하여 드롭다운에 추가
-    async function loadActiveTeams(tabId) {
-        try {
-            const res = await fetch('/api/employees');
-            const list = await res.json();
-            
-            // 모든 직원의 team_name 중에서 빈 값을 제외하고 중복을 제거함
-            const teams = [...new Set(list.map(emp => emp.team_name).filter(Boolean))];
-
-            const selector = tabId === 'waiting-sec' ? document.getElementById('waiting-team-selector') : document.getElementById('qr-team-selector');
-
-            if(teams.length === 0) {
-                selector.innerHTML = '<option value="">등록된 팀(행사장)이 없습니다</option>';
-                return;
-            }
-
-            selector.innerHTML = teams.map(team => `<option value="${team}">${team}</option>`).join('');
-
-            if(tabId === 'waiting-sec') loadWaitlistData();
-            if(tabId === 'qr-sec') generateCustomerQR();
-        } catch (e) { console.log(e); }
-    }
-    
-    async function loadWaitlistData() {
-        const teamName = document.getElementById('waiting-team-selector').value;
-        if(!teamName) return;
-        try {
-            const res = await fetch(`/api/admin/waitlist?teamName=${encodeURIComponent(teamName)}`);
-            const list = await res.json();
-            document.getElementById('waitlist-tbody').innerHTML = list.map(item => `
-                <tr>
-                    <td>${item.waiting_number}번</td>
-                    <td>${item.name}</td>
-                    <td>${item.count}명</td>
-                    <td>${item.phone}</td>
-                    <td><b>${item.status}</b></td>
-                    <td>
-                        <button class="btn" style="background:#2ecc71; padding:5px 10px; font-size:12px;" onclick="callCustomer(${item.id})">호출</button>
-                        <button class="btn" style="background:#95a5a6; padding:5px 10px; font-size:12px;" onclick="completeCustomer(${item.id})">완료</button>
-                    </td>
-                </tr>
-            `).join('');
-        } catch(e) {}
-    }
-
-    function generateCustomerQR() {
-        const teamName = document.getElementById('qr-team-selector').value;
-        if(!teamName) return;
-        const displayUrl = `${window.location.origin}/waiting/qr-display.html?team=${encodeURIComponent(teamName)}`;
-        document.getElementById('qr-result-box').innerHTML = `
-            <a href="${displayUrl}" target="_blank" class="btn" style="background:#2c3e50; text-decoration:none;">
-                📺 입구 태블릿용 QR 화면 열기 (클릭)
-            </a>
-        `;
     }
 </script>
 </body>
