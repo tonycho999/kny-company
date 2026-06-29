@@ -53,7 +53,9 @@
         function generateSecureQR() {
             const timeSlice = Math.floor(Date.now() / 10000);
             const targetUrl = `${window.location.origin}/waiting/register.html?team=${encodeURIComponent(teamName)}&token=${timeSlice}`;
-            document.getElementById('qr-image').src = `https://chart.googleapis.com/chart?chs=250x250&cht=qr&chl=${encodeURIComponent(targetUrl)}&choe=UTF-8`;
+            
+            // 💡 안정적인 QR 생성 전용 API(qrserver)로 교체 완료
+            document.getElementById('qr-image').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(targetUrl)}`;
         }
     </script>
 </body>
