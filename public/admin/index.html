@@ -3,268 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <title>KNY Company - 관리자 통합 대시보드</title>
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background: #f1f2f6; }
-        .sidebar { width: 260px; background: #2c3e50; color: white; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background: #f1f2f6; overflow: hidden; }
+        .sidebar { width: 260px; background: #2c3e50; color: white; padding: 20px; display: flex; flex-direction: column; }
         .sidebar h2 { text-align: center; margin-bottom: 30px; font-size: 20px; }
-        .menu-item { padding: 15px; margin-bottom: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .menu-item { padding: 15px; margin-bottom: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; text-decoration: none; color: white; transition: 0.2s; }
         .menu-item:hover, .menu-item.active { background: #34495e; color: #3498db; }
-        .main-content { flex: 1; padding: 40px; overflow-y: auto; }
-        .panel-section { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 30px; }
-        .hidden { display: none; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
-        th, td { border-bottom: 1px solid #ddd; padding: 12px; text-align: left; vertical-align: middle; }
-        th { background: #f8f9fa; }
-        .form-group { margin-bottom: 15px; }
-        label { display:block; margin-bottom:5px; font-weight:bold; }
-        input, select { width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; box-sizing:border-box; }
-        .btn { padding: 10px 20px; background: #3498db; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; }
-        .btn-danger { background: #e74c3c; }
-        .btn-danger:disabled { background: #bdc3c7; cursor: not-allowed; }
-        #editor { height: 350px; background: white; }
+        .main-content { flex: 1; display: flex; flex-direction: column; }
+        iframe { flex: 1; border: none; width: 100%; height: 100%; }
     </style>
 </head>
 <body>
-<div class="sidebar">
-    <h2>KNY Admin Panel</h2>
-    <div class="menu-item active" onclick="switchTab('portfolio-sec')">🖼️ 포트폴리오 관리</div>
-    <div class="menu-item" onclick="switchTab('employee-sec')">👥 직원 명부 관리</div>
-    <div class="menu-item" onclick="switchTab('attendance-sec')">⏰ 출퇴근 근태 현황</div>
-    <div class="menu-item" onclick="switchTab('qr-sec')">🔲 직원 출퇴근용 QR</div>
-</div>
-
-<div class="main-content">
-    <div id="portfolio-sec" class="panel-section">
-        <h2>✨ 홈페이지 포트폴리오 작성</h2>
-        <p style="color:#7f8c8d; margin-bottom: 20px;">이미지는 700KB 이하만 본문에 삽입할 수 있습니다.</p>
-        <div class="form-group">
-            <label>행사 타이틀</label>
-            <input type="text" id="p-title" placeholder="예: 2026년 과천시 야외 물놀이장 운영" required>
-        </div>
-        <div class="form-group" style="margin-bottom: 60px;">
-            <label>본문 내용 (사진 및 텍스트 편집)</label>
-            <div id="editor"></div>
-        </div>
-        <button class="btn" onclick="savePortfolio()">실적 저장 및 홈페이지 노출</button>
+    <div class="sidebar">
+        <h2>KNY Admin Panel</h2>
+        <a href="portfolio.html" target="content-frame" class="menu-item active" onclick="setActive(this)">🖼️ 포트폴리오 관리</a>
+        <a href="employees.html" target="content-frame" class="menu-item" onclick="setActive(this)">👥 직원 명부 관리</a>
+        <a href="attendance.html" target="content-frame" class="menu-item" onclick="setActive(this)">⏰ 출퇴근 근태 현황</a>
+        <a href="qr-manager.html" target="content-frame" class="menu-item" onclick="setActive(this)">🔲 직원 출퇴근용 QR</a>
     </div>
 
-    <div id="employee-sec" class="panel-section hidden">
-        <h2>임직원 신규 등록</h2>
-        <form id="employee-form" onsubmit="registerEmployee(event)" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:15px; margin-bottom:30px; background:#f8f9fa; padding:20px; border-radius:8px;">
-            <div><label>사원번호</label><input type="text" id="e-id" required></div>
-            <div><label>이름</label><input type="text" id="e-name" required></div>
-            <div><label>소속 팀명 (행사장명)</label><input type="text" id="e-team" placeholder="입력 시 팀 자동 생성됨"></div>
-            <div><label>연락처</label><input type="text" id="e-phone"></div>
-            <div><label>이메일 주소</label><input type="text" id="e-email"></div>
-            <div style="display:flex; align-items:flex-end;"><button class="btn" type="submit" style="width:100%;">직원 등록하기</button></div>
-        </form>
-        <h2>전체 임직원 관리</h2>
-        <table>
-            <thead><tr><th>사원번호</th><th>이름</th><th>팀명(행사장)</th><th>연락처</th><th>이메일</th><th>직원상태</th><th>관리</th></tr></thead>
-            <tbody id="employee-tbody"></tbody>
-        </table>
+    <div class="main-content">
+        <!-- 첫 로딩 시 포트폴리오 페이지를 띄움 -->
+        <iframe name="content-frame" src="portfolio.html"></iframe>
     </div>
 
-    <div id="attendance-sec" class="panel-section hidden">
-        <h2>오늘의 출퇴근 기록</h2>
-        <table>
-            <thead><tr><th>사원번호</th><th>이름</th><th>출근 시간</th><th>퇴근 시간</th></tr></thead>
-            <tbody id="attendance-tbody"></tbody>
-        </table>
-    </div>
-
-    <div id="qr-sec" class="panel-section hidden">
-        <h2>시스템 QR 코드 발급</h2>
-        <p style="color:#7f8c8d; margin-bottom: 20px;">현장 웨이팅용 QR은 [직원용 웨이팅 통제 시스템] 페이지에서 발급 가능합니다.</p>
-        <div class="form-group" style="margin-bottom: 40px;">
-            <label>✔️ 직원 출퇴근 10초 갱신용 QR</label><br>
-            <a href="#" onclick="openSecureQRGenerator(); return false;" class="btn">직원용 QR 스크린 띄우기</a>
-        </div>
-    </div>
-</div>
-
-<script>
-    let quill;
-    document.addEventListener('DOMContentLoaded', () => {
-        quill = new Quill('#editor', {
-            theme: 'snow',
-            modules: {
-                toolbar: {
-                    container: [
-                        [{ 'header': [1, 2, 3, false] }],
-                        ['bold', 'italic', 'underline', 'strike'],
-                        [{ 'color': [] }, { 'background': [] }],
-                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                        ['image', 'link']
-                    ],
-                    handlers: { image: imageHandler }
-                }
-            }
-        });
-    });
-
-    function imageHandler() {
-        const input = document.createElement('input');
-        input.setAttribute('type', 'file');
-        input.setAttribute('accept', 'image/*');
-        input.click();
-        input.onchange = async () => {
-            const file = input.files[0];
-            if (!file) return;
-            if (file.size > 700 * 1024) {
-                alert('🚨 이미지 용량이 초과되었습니다!\n\n현재 파일 크기: ' + (file.size / 1024).toFixed(0) + 'KB\n업로드 제한: 700KB 이하');
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const range = quill.getSelection();
-                quill.insertEmbed(range.index, 'image', e.target.result);
-            };
-            reader.readAsDataURL(file);
-        };
-    }
-
-    async function savePortfolio() {
-        const title = document.getElementById('p-title').value;
-        const htmlContent = quill.root.innerHTML;
-        if(!title) return alert('타이틀을 입력해주세요.');
-        try {
-            const res = await fetch('/api/portfolios', {
-                method: 'POST',
-                headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ title, content: htmlContent })
-            });
-            if(res.ok) {
-                alert('포트폴리오가 홈페이지에 게시되었습니다.');
-                document.getElementById('p-title').value = '';
-                quill.setContents([]);
-            } else { alert('서버 저장 실패'); }
-        } catch(e) { alert('서버 통신 오류가 발생했습니다.'); }
-    }
-
-    function switchTab(sectionId) {
-        document.querySelectorAll('.panel-section').forEach(el => el.classList.add('hidden'));
-        document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
-        document.getElementById(sectionId).classList.remove('hidden');
-        event.currentTarget.classList.add('active');
-        
-        if(sectionId === 'employee-sec') loadEmployees();
-        if(sectionId === 'attendance-sec') loadAttendance();
-    }
-
-    async function registerEmployee(e) {
-        e.preventDefault();
-        const payload = {
-            employee_id: document.getElementById('e-id').value.trim(),
-            name: document.getElementById('e-name').value.trim(),
-            team_name: document.getElementById('e-team').value.trim(),
-            phone: document.getElementById('e-phone').value.trim(),
-            email: document.getElementById('e-email').value.trim()
-        };
-        try {
-            const res = await fetch('/api/employees', { 
-                method: 'POST', 
-                headers: {'Content-Type':'application/json'}, 
-                body: JSON.stringify(payload) 
-            });
-            if(res.ok) {
-                alert(`직원 [${payload.name}] 등록 완료!`);
-                document.getElementById('employee-form').reset();
-                loadEmployees();
-            } else {
-                const errData = await res.json().catch(() => ({}));
-                alert('등록 실패: ' + (errData.error || '서버 응답 오류'));
-            }
-        } catch(err) { alert('서버와 통신할 수 없습니다.'); }
-    }
-
-    async function loadEmployees() {
-        try {
-            const res = await fetch('/api/employees');
-            if(!res.ok) throw new Error();
-            const list = await res.json();
-            document.getElementById('employee-tbody').innerHTML = list.map(emp => `
-                <tr>
-                    <td>${emp.employee_id}</td>
-                    <td><b>${emp.name}</b></td>
-                    <td>${emp.team_name || '<span style="color:#95a5a6;">팀 미배정</span>'}</td>
-                    <td>${emp.phone || '-'}</td>
-                    <td>${emp.email || '-'}</td>
-                    <td>
-                        <select onchange="updateEmpStatus('${emp.employee_id}', this.value)" style="padding:5px;">
-                            <option value="재직" ${emp.status === '재직' ? 'selected' : ''}>재직</option>
-                            <option value="퇴사" ${emp.status === '퇴사' ? 'selected' : ''}>퇴사</option>
-                        </select>
-                    </td>
-                    <td>
-                        <button class="btn btn-danger" style="padding:5px 10px;" 
-                            ${emp.status === '재직' ? 'disabled' : ''} 
-                            onclick="deleteEmp('${emp.employee_id}')">
-                            데이터 삭제
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-        } catch(e) {
-            document.getElementById('employee-tbody').innerHTML = `<tr><td colspan="7" style="color:#e74c3c; text-align:center;">명부를 불러오지 못했습니다.</td></tr>`;
+    <script>
+        function setActive(element) {
+            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
         }
-    }
-
-    async function updateEmpStatus(empId, newStatus) {
-        try {
-            const res = await fetch(`/api/employees`, { 
-                method: 'PUT', 
-                headers: {'Content-Type':'application/json'}, 
-                body: JSON.stringify({ employee_id: empId, status: newStatus }) 
-            });
-            if(res.ok) loadEmployees();
-            else alert('상태 변경 실패');
-        } catch(e) { alert('통신 오류'); }
-    }
-
-    async function deleteEmp(empId) {
-        if(!confirm('이 직원의 모든 데이터를 시스템에서 영구 삭제하시겠습니까?')) return;
-        try {
-            const res = await fetch(`/api/employees?employee_id=${empId}`, { method: 'DELETE' });
-            if(res.ok) {
-                alert('성공적으로 삭제되었습니다.');
-                loadEmployees();
-            } else { alert('삭제 실패'); }
-        } catch(e) { alert('통신 오류'); }
-    }
-
-    async function loadAttendance() {
-        const today = new Date().toISOString().split('T')[0];
-        try {
-            const res = await fetch(`/api/attendance?date=${today}`);
-            const list = await res.json();
-            document.getElementById('attendance-tbody').innerHTML = list.map(att => `
-                <tr>
-                    <td>${att.employee_id}</td>
-                    <td><b>${att.name}</b></td>
-                    <td style="color:#2980b9; font-weight:bold;">${att.clock_in || '-'}</td>
-                    <td style="color:#e74c3c; font-weight:bold;">${att.clock_out || '-'}</td>
-                </tr>
-            `).join('');
-        } catch(e) {
-            document.getElementById('attendance-tbody').innerHTML = `<tr><td colspan="4" style="color:#e74c3c; text-align:center;">근태 데이터를 로드하지 못했습니다.</td></tr>`;
-        }
-    }
-
-    // 💡 [수정] 복잡한 URL 생성은 유지하되, KST 기준 순수 시간(토큰)만 넘기도록 수정
-    function openSecureQRGenerator() {
-        const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
-        const adminToken = Math.floor(nowKst.getTime() / 10000);
-        
-        // 의미 없는 엄청 긴 가짜 난수 생성 (심리적 압박용)
-        const fakeSignature = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        
-        // 아주 복잡한 URL 생성
-        const displayUrl = `${window.location.origin}/admin/qr-generator.html?admin_token=${adminToken}&signature=${fakeSignature}&auth_level=admin_secure_mode`;
-        window.open(displayUrl, '_blank');
-    }
-</script>
+    </script>
 </body>
 </html>
