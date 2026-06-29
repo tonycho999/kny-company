@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KNY Company - 실시간 보안 QR</title>
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #2c3e50; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
+        .qr-container { background: white; padding: 40px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); max-width: 450px; width: 100%; margin: 20px; }
+        h1 { color: #2c3e50; font-size: 28px; margin-bottom: 5px; font-weight: bold; }
+        .team-tag { color: #3498db; font-size: 20px; font-weight: bold; margin-bottom: 20px; }
+        #qr-image { width: 250px; height: 250px; margin: 15px 0; }
+        .timer-bar { width: 100%; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; margin-top: 20px; }
+        .timer-fill { height: 100%; width: 100%; background: #e74c3c; transform-origin: left; animation: countdown 10s linear infinite; }
+        .notice { color: #7f8c8d; font-size: 14px; margin-top: 15px; font-weight: 500; }
+        @keyframes countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+    </style>
+</head>
+<body>
+
+    <div class="qr-container">
+        <h1>대기 접수 QR 코드</h1>
+        <div class="team-tag" id="team-title">📍 행사장 확인 중...</div>
+        
+        <img id="qr-image" src="" alt="보안 QR코드">
+        
+        <div class="timer-bar">
+            <div class="timer-fill" id="progress"></div>
+        </div>
+        <p class="notice">⚠️ 원격 접수 방지를 위해 10초마다 코드가 변경됩니다.<br>카메라 앱으로 스캔 후 즉시 접수해 주세요.</p>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const teamName = urlParams.get('team');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!teamName) {
+                alert('행사장 팀명(?team=...)이 지정되지 않았습니다.');
+                return;
+            }
+            document.getElementById('team-title').innerText = `📍 ${decodeURIComponent(teamName)}`;
+            
+            // 최초 QR 생성 및 10초 타이머 가동
+            generateSecureQR();
+            setInterval(generateSecureQR, 10000);
+
+            // 타이머 바 애니메이션 리셋 리스너
+            setInterval(() => {
+                const prog = document.getElementById('progress');
+                prog.style.animation = 'none';
+                prog.offsetHeight; /* 트리거 바인딩 리셋용 */
+                prog.style.animation = null;
+            }, 10000);
+        });
+
+        function generateSecureQR() {
+            // 현재 시간을 10초 단위로 나누어 유일한 타임스탬프 값 생성
+            const timeSlice = Math.floor(Date.now() / 10000);
+            
+            // 손님이 접속할 주소 뒤에 [팀명]과 [10초짜리 보안 토큰]을 함께 구워버림
+            const targetUrl = `${window.location.origin}/waiting/register.html?team=${encodeURIComponent(teamName)}&token=${timeSlice}`;
+            
+            // 구글 QR 생성 API 바인딩
+            document.getElementById('qr-image').src = `https://chart.googleapis.com/chart?chs=250x250&cht=qr&chl=${encodeURIComponent(targetUrl)}&choe=UTF-8`;
+        }
+    </script>
+</body>
+</html>
