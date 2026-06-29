@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+    <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -80,7 +80,8 @@
         <p style="color:#7f8c8d; margin-bottom: 20px;">현장 웨이팅용 QR은 [직원용 웨이팅 통제 시스템] 페이지에서 발급 가능합니다.</p>
         <div class="form-group" style="margin-bottom: 40px;">
             <label>✔️ 직원 출퇴근 10초 갱신용 QR</label><br>
-            <a href="/admin/qr-generator.html" target="_blank" class="btn">직원용 QR 스크린 띄우기</a>
+            <!-- 자바스크립트 함수를 통해 동적 보안 토큰을 달아서 새 창을 열게 합니다 -->
+            <a href="#" onclick="openSecureQRGenerator(); return false;" class="btn">직원용 QR 스크린 띄우기</a>
         </div>
     </div>
 </div>
