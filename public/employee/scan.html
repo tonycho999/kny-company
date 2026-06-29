@@ -76,27 +76,32 @@
                 return;
             }
 
-            // 💡 KST 기준으로 시간 오차 보정
-            const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
-            const currentSlice = Math.floor(nowKst.getTime() / 10000);
-            
-            globalRealToken = parseInt(rawToken) - 83749;
-            const tokenDiff = currentSlice - globalRealToken;
-            
-            // 검증 여유 시간을 넉넉하게 5로 늘림 (약 50초간 유효)
-            if (tokenDiff < 0 || tokenDiff > 5) { 
-                showMsg('❌ 만료된 QR코드입니다. 입구의 최신 화면을 다시 스캔해주세요.', 'error');
-                return;
-            }
+            try {
+                // 💡 [수정] QR 생성기와 동일하게 KST 기준으로 시간 차이 계산
+                const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
+                const currentSlice = Math.floor(nowKst.getTime() / 10000);
+                
+                globalRealToken = parseInt(rawToken) - 83749;
+                const tokenDiff = currentSlice - globalRealToken;
+                
+                // 디버깅용: 토큰 차이가 비정상적일 경우 화면에 로그를 띄웁니다.
+                if (tokenDiff < 0 || tokenDiff > 5) { 
+                    console.log("Token diff:", tokenDiff, "Current Slice:", currentSlice, "Real Token:", globalRealToken);
+                    showMsg('❌ 만료된 QR코드입니다. 입구의 최신 화면을 다시 스캔해주세요.', 'error');
+                    return;
+                }
 
-            const savedId = localStorage.getItem('savedEmployeeId');
-            if (savedId) {
-                globalEmployeeId = savedId;
-                document.getElementById('reset-btn').classList.remove('hidden');
-                await openChoiceForm(savedId);
-            } else {
-                document.getElementById('status-area').classList.add('hidden');
-                document.getElementById('auth-form').classList.remove('hidden');
+                const savedId = localStorage.getItem('savedEmployeeId');
+                if (savedId) {
+                    globalEmployeeId = savedId;
+                    document.getElementById('reset-btn').classList.remove('hidden');
+                    await openChoiceForm(savedId);
+                } else {
+                    document.getElementById('status-area').classList.add('hidden');
+                    document.getElementById('auth-form').classList.remove('hidden');
+                }
+            } catch (err) {
+                showMsg('❌ 시스템 초기화 중 오류가 발생했습니다.', 'error');
             }
         });
 
@@ -118,7 +123,9 @@
             showMsg('🔄 직원 및 근태 기록을 조회 중입니다...', 'info');
             try {
                 const resEmp = await fetch('/api/employees');
+                if (!resEmp.ok) throw new Error("직원 정보를 불러오지 못했습니다.");
                 const employees = await resEmp.json();
+                
                 const currentEmp = employees.find(emp => emp.employee_id === employeeId);
                 
                 if (!currentEmp) {
@@ -128,6 +135,8 @@
 
                 const todayKst = new Date(Date.now() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
                 const resAtt = await fetch(`/api/attendance?date=${todayKst}`);
+                
+                if (!resAtt.ok) throw new Error("근태 기록을 불러오지 못했습니다.");
                 const attendances = await resAtt.json();
                 
                 const myTodayRecord = attendances.find(att => att.employee_id === employeeId);
@@ -151,4 +160,55 @@
                     document.getElementById('choice-form').classList.add('hidden');
                     showMsg('🎉 오늘 하루도 수고 많으셨습니다!\n(출퇴근 처리가 모두 완료된 상태입니다)', 'success');
                 }
-            } catch (e
+            } catch (e) {
+                console.error(e);
+                showMsg('❌ 서버 통신 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        async function submitAttendance(type) {
+            document.getElementById('choice-form').classList.add('hidden');
+            showMsg('⏳ 출퇴근 기록을 전송하는 중입니다...', 'info');
+
+            try {
+                const response = await fetch('/api/attendance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ employeeId: globalEmployeeId, type, token: globalRealToken })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
+                    const hours = String(nowKst.getHours()).padStart(2, '0');
+                    const minutes = String(nowKst.getMinutes()).padStart(2, '0');
+                    const typeText = type === 'in' ? '출근' : '퇴근';
+
+                    // Audio play 오류 발생 시에도 진행되도록 catch 처리 강화
+                    try {
+                        const audio = type === 'in' ? new Audio('/sounds/clock_in.mp3') : new Audio('/sounds/clock_out.mp3');
+                        await audio.play();
+                    } catch(e) {
+                        console.log("Audio play prevented:", e);
+                    }
+
+                    showMsg(`✅ ${result.name}님, ${hours}시 ${minutes}분에 ${typeText} 처리되었습니다.`, 'success');
+                } else {
+                    showMsg(`❌ 처리 실패: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showMsg('❌ 서버 전송 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        function resetSavedId() {
+            if (confirm('저장된 사원번호를 삭제하시겠습니까?')) {
+                localStorage.removeItem('savedEmployeeId');
+                sessionStorage.removeItem('scan_token');
+                window.location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
