@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f1f2f6; margin: 0; padding: 40px; }
+        .panel { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .form-group { margin-bottom: 25px; }
+        label { display:block; margin-bottom:10px; font-weight:bold; font-size:16px; }
+        .btn { padding: 12px 25px; background: #3498db; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; text-decoration:none; display:inline-block; }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <h2>🔲 시스템 QR 코드 발급</h2>
+        <p style="color:#7f8c8d; margin-bottom: 30px;">
+            현장 웨이팅용 고객 대기 QR은 <b>[직원용 웨이팅 통제 시스템]</b> 페이지에서 발급 가능합니다.
+        </p>
+        
+        <div class="form-group" style="padding: 20px; background: #f8f9fa; border-radius: 8px;">
+            <label>✔️ 직원 출퇴근 10초 갱신용 QR</label>
+            <p style="color:#7f8c8d; font-size:14px; margin-bottom: 20px;">
+                이 버튼을 누르면 새 창에 출퇴근 전용 보안 QR 코드가 생성됩니다.<br>
+                직원들은 출퇴근 시 이 화면을 카메라로 스캔하여 인증해야 합니다.
+            </p>
+            <a href="#" onclick="openSecureQRGenerator(); return false;" class="btn">직원용 QR 스크린 띄우기 (새 창)</a>
+        </div>
+    </div>
+
+    <script>
+        function openSecureQRGenerator() {
+            const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
+            const adminToken = Math.floor(nowKst.getTime() / 10000);
+            
+            // 보안을 위해 가짜 서명을 붙여 새 창 오픈
+            const fakeSignature = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            const displayUrl = `${window.location.origin}/admin/qr-generator.html?admin_token=${adminToken}&signature=${fakeSignature}&auth_level=admin_secure_mode`;
+            
+            window.open(displayUrl, '_blank');
+        }
+    </script>
+</body>
+</html>
