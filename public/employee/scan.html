@@ -4,23 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KNY Company - 출퇴근 등록 시스템</title>
+    
+    <script>
+        // 💡 [핵심 보안] 화면이 그려지기 전인 0.001초 타이밍에 주소창의 파라미터를 즉시 지워버립니다.
+        const urlParams = new URLSearchParams(window.location.search);
+        const incomingToken = urlParams.get('token');
+        if (incomingToken) {
+            sessionStorage.setItem('scan_token', incomingToken);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    </script>
+
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; background-color: #f5f6fa; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .container { background: white; padding: 40px 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; max-width: 400px; width: 100%; margin: 20px; }
         h1 { color: #2c3e50; margin-bottom: 25px; font-size: 24px; font-weight: bold; }
         .emp-name-tag { font-size: 22px; color: #2c3e50; font-weight: bold; margin-bottom: 20px; display: block; }
         input[type="text"] { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; text-align: center; }
-        
         button { width: 100%; padding: 14px; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
         .btn-blue { background-color: #3498db; }
         .btn-blue:hover { background-color: #2980b9; }
-        
         .action-box { display: flex; gap: 15px; margin-top: 20px; }
         .btn-in { background-color: #2ecc71; font-size: 18px; padding: 20px 0; }
         .btn-in:hover { background-color: #27ae60; }
         .btn-out { background-color: #e67e22; font-size: 18px; padding: 20px 0; }
         .btn-out:hover { background-color: #d35400; }
-        
         .message { margin-top: 15px; font-size: 18px; font-weight: bold; line-height: 1.6; }
         .success { color: #2ecc71; }
         .error { color: #e74c3c; }
@@ -57,21 +65,13 @@
     </div>
 
     <script>
-        // 💡 주소창 파라미터 읽어오기 및 은폐 로직
-        const urlParams = new URLSearchParams(window.location.search);
-        let rawToken = urlParams.get('token');
-        
-        if (rawToken) {
-            sessionStorage.setItem('scan_token', rawToken); // 메모리에 임시 보관
-            window.history.replaceState({}, document.title, window.location.pathname); // 주소창 지우기
-        } else {
-            rawToken = sessionStorage.getItem('scan_token'); // 새로고침 시 메모리에서 복구
-        }
-
         const audioIn = new Audio('/sounds/clock_in.mp3');
         const audioOut = new Audio('/sounds/clock_out.mp3');
         
+        // 메모리에 숨겨둔 토큰을 꺼내옵니다.
+        let rawToken = sessionStorage.getItem('scan_token');
         let globalEmployeeId = ""; 
+        let globalRealToken = null; 
         let todayClockIn = false;
         let todayClockOut = false;
 
@@ -81,14 +81,8 @@
                 return;
             }
 
-            // 난독화 복호화 및 시간 검증 로직
-            const currentSlice = Math.floor(Date.now() / 10000);
-            const tokenDiff = currentSlice - (parseInt(rawToken) - 83749); // 복호화(-83749) 후 비교
-            
-            if (tokenDiff < 0 || tokenDiff > 2) { 
-                showMsg('❌ 만료된 QR코드입니다. 입구의 최신 화면을 다시 스캔해주세요.', 'error');
-                return;
-            }
+            // 난독화 복호화 (-83749)
+            globalRealToken = parseInt(rawToken) - 83749;
 
             const savedId = localStorage.getItem('savedEmployeeId');
             if (savedId) {
@@ -118,7 +112,6 @@
         async function openChoiceForm(employeeId) {
             showMsg('🔄 직원 및 근태 기록을 조회 중입니다...', 'info');
             try {
-                // 1. 사원 정보 확인
                 const resEmp = await fetch('/api/employees');
                 const employees = await resEmp.json();
                 const currentEmp = employees.find(emp => emp.employee_id === employeeId);
@@ -128,8 +121,7 @@
                     return;
                 }
 
-                // 2. 오늘 내 출퇴근 기록 확인 (백엔드 /api/attendance 활용)
-                const today = new Date().toISOString().split('T')[0]; // 클라이언트 기준 오늘 날짜
+                const today = new Date().toISOString().split('T')[0];
                 const resAtt = await fetch(`/api/attendance?date=${today}`);
                 const attendances = await resAtt.json();
                 
@@ -140,26 +132,20 @@
                     if (myTodayRecord.clock_out) todayClockOut = true;
                 }
 
-                // UI 연동
                 document.getElementById('target-emp-name').innerText = `✨ ${currentEmp.name} 님`;
                 document.getElementById('status-area').classList.add('hidden');
                 document.getElementById('choice-form').classList.remove('hidden');
 
-                // 💡 [핵심] 출/퇴근 상태에 따른 버튼 조건부 노출
                 if (!todayClockIn) {
-                    // 출근 전
                     document.getElementById('action-guide').innerText = '☀️ 오늘 근무를 시작하시겠습니까?';
                     document.getElementById('btn-clock-in').classList.remove('hidden');
                 } else if (todayClockIn && !todayClockOut) {
-                    // 출근은 했으나 퇴근 전
                     document.getElementById('action-guide').innerText = '🌙 오늘 근무를 마치고 퇴근하시겠습니까?';
                     document.getElementById('btn-clock-out').classList.remove('hidden');
                 } else if (todayClockIn && todayClockOut) {
-                    // 출퇴근 모두 완료
                     document.getElementById('choice-form').classList.add('hidden');
                     showMsg('🎉 오늘 하루도 수고 많으셨습니다!\n(출퇴근 처리가 모두 완료된 상태입니다)', 'success');
                 }
-
             } catch (e) {
                 showMsg('❌ 서버 통신 중 오류가 발생했습니다.', 'error');
             }
@@ -170,14 +156,10 @@
             showMsg('⏳ 출퇴근 기록을 전송하는 중입니다...', 'info');
 
             try {
-                // 이전 대화의 기존 백엔드 API 형식(getValidTokens 검증방식) 호환성을 위해 
-                // 복호화하지 않은 오리지널 토큰 구조인 (시간값만 있는) 토큰 재생성해서 넘김
-                const oldStyleToken = String(Math.floor(Date.now() / 10000) % 900000 + 100000); 
-
                 const response = await fetch('/api/attendance', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ employeeId: globalEmployeeId, type, token: oldStyleToken })
+                    body: JSON.stringify({ employeeId: globalEmployeeId, type, token: globalRealToken })
                 });
 
                 const result = await response.json();
