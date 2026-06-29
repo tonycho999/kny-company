@@ -161,31 +161,43 @@
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // 백엔드 API에서 포트폴리오 데이터를 요청
                 const res = await fetch('/api/portfolios');
                 const data = await res.json();
                 const grid = document.getElementById('portfolio-grid');
                 
-                // 데이터가 하나도 없을 때의 처리
                 if(data.length === 0) {
                     grid.innerHTML = `<p style="grid-column: 1/-1; color:#95a5a6; padding: 40px 0;">아직 등록된 포트폴리오 실적이 없습니다.</p>`;
                     return;
                 }
 
-                // 관리자 페이지에서 입력한 데이터로 카드 렌더링
-                grid.innerHTML = data.map(item => `
-                    <div class="portfolio-card">
-                        <img src="${item.image_url || '/images/kny-logo.png'}" alt="${item.title}">
-                        <div class="card-body">
-                            <h3>${item.title}</h3>
-                            <p>${item.description}</p>
-                        </div>
-                    </div>
-                `).join('');
+                grid.innerHTML = data.map(item => {
+                    // 에디터 내용(HTML)에서 첫 번째 <img> 태그의 src 속성을 찾아 대표 이미지로 사용합니다.
+                    // 만약 이미지가 없다면 기본 로고를 사용합니다.
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = item.content;
+                    const firstImage = tempDiv.querySelector('img');
+                    const thumbnailUrl = firstImage ? firstImage.src : '/images/kny-logo.png';
+                    
+                    // HTML 태그를 모두 제거하고 순수 텍스트만 뽑아 요약(description)으로 씁니다.
+                    const plainText = tempDiv.textContent || tempDiv.innerText || "";
+                    const description = plainText.length > 50 ? plainText.substring(0, 50) + '...' : plainText;
+
+                    return `
+                        <!-- 💡 클릭 시 상세 페이지로 이동하도록 <a> 태그로 감싸고 쿼리 파라미터(id)를 전달합니다. -->
+                        <a href="/portfolio-detail.html?id=${item.id}" class="portfolio-card">
+                            <img src="${thumbnailUrl}" alt="${item.title}">
+                            <div class="card-body">
+                                <h3>${item.title}</h3>
+                                <p>${description}</p>
+                            </div>
+                        </a>
+                    `;
+                }).join('');
             } catch (e) {
-                document.getElementById('portfolio-grid').innerHTML = `<p style="grid-column: 1/-1; color:#e74c3c; padding: 40px 0;">실적 로딩 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.</p>`;
+                document.getElementById('portfolio-grid').innerHTML = `<p style="grid-column: 1/-1; color:#e74c3c; padding: 40px 0;">실적 로딩 중 오류가 발생했습니다.</p>`;
             }
         });
     </script>
+
 </body>
 </html>
