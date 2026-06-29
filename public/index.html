@@ -1,44 +1,188 @@
-<section id="projects">
-    <h2>주요 진행 행사 및 포트폴리오</h2>
-    <p>케이앤와이 주식회사가 진행한 생생한 현장 실적을 확인하세요.</p>
-    
-    <div id="portfolio-grid" class="portfolio-grid"></div>
-</section>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>KNY Company - 관리자 통합 대시보드 (팀명 연동형)</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background: #f1f2f6; }
+        .sidebar { width: 260px; background: #2c3e50; color: white; padding: 20px; }
+        .sidebar h2 { text-align: center; margin-bottom: 30px; font-size: 20px; }
+        .menu-item { padding: 15px; margin-bottom: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .menu-item:hover, .menu-item.active { background: #34495e; color: #3498db; }
+        .main-content { flex: 1; padding: 40px; overflow-y: auto; }
+        .panel-section { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .hidden { display: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border-bottom: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #f8f9fa; }
+        .form-group { margin-bottom: 15px; }
+        label { display:block; margin-bottom:5px; font-weight:bold; }
+        input, textarea, select { width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; box-sizing:border-box; }
+        .btn { padding: 10px 20px; background: #3498db; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; }
+    </style>
+</head>
+<body>
 
-<style>
-    .portfolio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px; max-width: 1200px; width: 100%; margin-top: 40px; padding: 0 20px; }
-    .portfolio-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.08); text-align: left; transition: transform 0.2s; }
-    .portfolio-card:hover { transform: translateY(-5px); }
-    .portfolio-card img { width: 100%; height: 200px; object-fit: cover; }
-    .portfolio-card .card-body { padding: 20px; }
-    .portfolio-card h3 { font-size: 18px; color: #2c3e50; margin-bottom: 10px; }
-    .portfolio-card p { font-size: 14px; color: #7f8c8d; line-height: 1.5; }
-</style>
+<div class="sidebar">
+    <h2>KNY Admin Panel</h2>
+    <div class="menu-item active" onclick="switchTab('portfolio-sec')">🖼️ 포트폴리오 관리</div>
+    <div class="menu-item" onclick="switchTab('employee-sec')">👥 직원 & 근태 관리</div>
+    <div class="menu-item" onclick="switchTab('waiting-sec')">🌊 실시간 웨이팅 관리</div>
+    <div class="menu-item" onclick="switchTab('qr-sec')">🔲 시스템 QR 코드 발급</div>
+</div>
+
+<div class="main-content">
+    
+    <div id="portfolio-sec" class="panel-section">
+        <h2>홈페이지 포트폴리오 추가</h2>
+        <form onsubmit="addPortfolio(event)" style="max-width:500px; margin-top:20px;">
+            <div class="form-group"><label>행사 타이틀</label><input type="text" id="p-title" required></div>
+            <div class="form-group"><label>상세 설명</label><textarea id="p-desc" rows="4" required></textarea></div>
+            <div class="form-group"><label>현장 이미지 주소(URL)</label><input type="text" id="p-img"></div>
+            <button class="btn" type="submit">실적 저장 및 홈페이지 노출</button>
+        </form>
+    </div>
+
+    <div id="employee-sec" class="panel-section hidden">
+        <h2>임직원 명부 등록</h2>
+        <form onsubmit="registerEmployee(event)" style="max-width:600px; display:flex; gap:10px; margin-bottom:30px;">
+            <input type="text" id="e-id" placeholder="사번" style="flex:1;" required>
+            <input type="text" id="e-name" placeholder="이름" style="flex:1;" required>
+            <input type="text" id="e-team" placeholder="팀명 (곧 행사장명)" style="flex:1.5;" required>
+            <button class="btn" type="submit">등록</button>
+        </form>
+        <h2>오늘의 근태 현황 조회</h2>
+        <table id="attendance-table">
+            <thead><tr><th>사번</th><th>이름</th><th>소속 팀(행사장)</th><th>출근시간</th><th>퇴근시간</th></tr></thead>
+            <tbody id="attendance-tbody"></tbody>
+        </table>
+    </div>
+
+    <div id="waiting-sec" class="panel-section hidden">
+        <h2>행사장별 대기열 통제 관리</h2>
+        <div class="form-group" style="max-width:300px; margin-top:10px;">
+            <label>지휘 대상 행사장(팀명) 선택</label>
+            <select id="waiting-team-selector" onchange="loadWaitlistData()"></select>
+        </div>
+        <table>
+            <thead><tr><th>대기번호</th><th>고객명</th><th>인원</th><th>연락처</th><th>상태</th><th>호출 조작</th></tr></thead>
+            <tbody id="waitlist-tbody"></tbody>
+        </table>
+    </div>
+
+    <div id="qr-sec" class="panel-section hidden">
+        <h2>시스템 진입 QR 코드 다운로드</h2>
+        <div class="form-group" style="max-width:400px; margin-top:20px;">
+            <label>1. 직원 출퇴근 보안용 QR 코드 링크</label>
+            <a href="/employee/qr-generator.html" target="_blank" style="color:#3498db; font-weight:bold;">[이동] 10초 주기 가동형 QR 화면 열기</a>
+        </div>
+        <hr style="margin:30px 0; border:0; border-top:1px solid #eee;">
+        <div class="form-group" style="max-width:400px;">
+            <label>2. 손님용 접수 QR 코드 발급 (등록된 팀명 기준)</label>
+            <select id="qr-team-selector" onchange="generateCustomerQR()"></select>
+            <div id="qr-result-box" style="margin-top:20px; text-align:center; padding:20px; background:#f8f9fa; border-radius:8px;">
+                <p style="color:#7f8c8d;">직원 관리에 팀명이 등록되면 여기에 자동으로 QR 코드가 생성됩니다.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
 
 <script>
-    // 페이지 로드 시 포트폴리오 동적 호출
-    document.addEventListener('DOMContentLoaded', async () => {
+    function switchTab(sectionId) {
+        document.querySelectorAll('.panel-section').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+        document.getElementById(sectionId).classList.remove('hidden');
+        event.currentTarget.classList.add('active');
+        
+        if(sectionId === 'waiting-sec' || sectionId === 'qr-sec') loadActiveTeams(sectionId);
+        if(sectionId === 'employee-sec') loadAttendance();
+    }
+
+    // ★ 핵심 로직: 현재 직원들의 명부에서 중복 없는 팀명 목록을 추출해 선택창을 채웁니다.
+    async function loadActiveTeams(tabId) {
         try {
-            const res = await fetch('/api/portfolios');
-            const data = await res.json();
-            const grid = document.getElementById('portfolio-grid');
+            const res = await fetch('/api/employees/teams'); // 백엔드에서 DISTINCT(team_name)를 리턴하는 API
+            const teams = await res.json();
+            const selector = tabId === 'waiting-sec' ? document.getElementById('waiting-team-selector') : document.getElementById('qr-team-selector');
             
-            if(data.length === 0) {
-                grid.innerHTML = `<p style="grid-column: 1/-1; color:#95a5a6;">등록된 포트폴리오 실적이 없습니다.</p>`;
+            if(teams.length === 0) {
+                selector.innerHTML = '<option value="">등록된 팀(행사장)이 없습니다</option>';
                 return;
             }
-
-            grid.innerHTML = data.map(item => `
-                <div class="portfolio-card">
-                    <img src="${item.image_url || '/images/default-placeholder.png'}" alt="${item.title}">
-                    <div class="card-body">
-                        <h3>${item.title}</h3>
-                        <p>${item.description}</p>
-                    </div>
-                </div>
-            `).join('');
+            
+            selector.innerHTML = teams.map(team => `<option value="${team}">${team}</option>`).join('');
+            if(tabId === 'waiting-sec') loadWaitlistData();
+            if(tabId === 'qr-sec') generateCustomerQR();
         } catch (e) {
-            document.getElementById('portfolio-grid').innerHTML = `<p style="grid-column: 1/-1; color:#e74c3c;">실적 로딩 중 오류가 발생했습니다.</p>`;
+            console.log("팀 목록 로드 실패");
         }
-    });
+    }
+
+    // 특정 팀(행사장) 고객 대기 명부 로드
+    async function loadWaitlistData() {
+        const teamName = document.getElementById('waiting-team-selector').value;
+        if(!teamName) return;
+        const res = await fetch(`/api/admin/waitlist?teamName=${encodeURIComponent(teamName)}`);
+        const list = await res.json();
+        
+        document.getElementById('waitlist-tbody').innerHTML = list.map(item => `
+            <tr>
+                <td>${item.waiting_number}번</td>
+                <td>${item.name}</td>
+                <td>${item.count}명</td>
+                <td>${item.phone}</td>
+                <td><b>${item.status}</b></td>
+                <td>
+                    <button class="btn" style="background:#2ecc71; padding:5px 10px; font-size:12px;" onclick="callCustomer(${item.id})">호출 및 알림톡</button>
+                    <button class="btn" style="background:#95a5a6; padding:5px 10px; font-size:12px;" onclick="completeCustomer(${item.id})">완료</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // ★ 팀명 문자열을 주소 파라미터로 직접 굽는 QR 발급 코드
+    function generateCustomerQR() {
+        const teamName = document.getElementById('qr-team-selector').value;
+        if(!teamName) return;
+        const targetUrl = `${window.location.origin}/waiting/register.html?team=${encodeURIComponent(teamName)}`;
+        
+        document.getElementById('qr-result-box').innerHTML = `
+            <h4 style="margin-bottom:10px; color:#2c3e50;">📢 [${teamName}] 전용 접수 QR 코드</h4>
+            <img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(targetUrl)}&choe=UTF-8" alt="QR">
+            <p style="font-size:12px; margin-top:5px; color:#7f8c8d;">스캔 시 해당 행사장 대기열로 자동 접수됩니다.</p>
+        `;
+    }
+
+    // 직원 등록 처리
+    async function registerEmployee(e) {
+        e.preventDefault();
+        const payload = {
+            employee_id: document.getElementById('e-id').value.trim(),
+            name: document.getElementById('e-name').value.trim(),
+            team_name: document.getElementById('e-team').value.trim()
+        };
+        await fetch('/api/employees', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(payload)
+        });
+        alert(`직원 등록 완료! 이제 [${payload.team_name}] 팀의 QR코드와 웨이팅 개설이 가능합니다.`);
+        document.getElementById('e-id').value=''; document.getElementById('e-name').value=''; document.getElementById('e-team').value='';
+    }
+
+    // (기존 동일) 포트폴리오 추가 처리
+    async function addPortfolio(e) {
+        e.preventDefault();
+        const payload = {
+            title: document.getElementById('p-title').value,
+            description: document.getElementById('p-desc').value,
+            image_url: document.getElementById('p-img').value
+        };
+        await fetch('/api/portfolios', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        alert('포트폴리오 실적이 추가되었습니다.');
+        window.location.reload();
+    }
 </script>
+</body>
+</html>
