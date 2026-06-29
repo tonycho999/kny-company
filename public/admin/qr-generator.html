@@ -6,22 +6,20 @@
     <title>공용 출퇴근 QR 코드</title>
     
     <script>
-        // 💡 주소창을 지우지 않고 복잡한 파라미터를 그대로 노출시킵니다!
         const urlParams = new URLSearchParams(window.location.search);
         const adminToken = urlParams.get('admin_token');
         
-        // 토큰이 아예 없으면 즉시 차단
         if (!adminToken) {
-            document.write('<h2 style="color:red; text-align:center; margin-top:50px;">🚫 접근 권한이 없습니다.<br><span style="font-size:14px; color:#7f8c8d;">보안 서명이 포함된 URL이 필요합니다.</span></h2>');
+            document.write('<h2 style="color:red; text-align:center; margin-top:50px;">🚫 접근 권한이 없습니다.</h2>');
             window.stop();
         }
 
-        // 토큰 시간 검증 (열어둔 지 50초가 지난 과거의 링크로 들어오면 차단)
-        const currentSlice = Math.floor(Date.now() / 10000);
+        const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
+        const currentSlice = Math.floor(nowKst.getTime() / 10000);
         const tokenDiff = currentSlice - (parseInt(adminToken) - 55555);
         
         if (tokenDiff < 0 || tokenDiff > 5) { 
-            document.write('<h2 style="color:red; text-align:center; margin-top:50px;">🚫 보안 토큰이 만료되었습니다.<br><span style="font-size:14px; color:#7f8c8d;">관리자 대시보드에서 새 창을 다시 열어주세요.</span></h2>');
+            document.write('<h2 style="color:red; text-align:center; margin-top:50px;">🚫 보안 토큰이 만료되었습니다.</h2>');
             window.stop();
         }
     </script>
@@ -48,8 +46,10 @@
             width: 300, height: 300, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H
         });
 
+        // 💡 QR에 포함되는 토큰도 KST 기준으로 계산
         function generateToken() {
-            return Math.floor(Date.now() / 10000) + 83749;
+            const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
+            return Math.floor(nowKst.getTime() / 10000) + 83749;
         }
 
         function generateQRData() {
