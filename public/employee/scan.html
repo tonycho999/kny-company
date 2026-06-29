@@ -8,9 +8,22 @@
         body { font-family: 'Noto Sans KR', sans-serif; background-color: #f5f6fa; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .container { background: white; padding: 40px 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; max-width: 400px; width: 100%; margin: 20px; }
         h1 { color: #2c3e50; margin-bottom: 25px; font-size: 24px; font-weight: bold; }
+        .emp-name-tag { font-size: 22px; color: #2c3e50; font-weight: bold; margin-bottom: 20px; display: block; }
         input[type="text"] { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; text-align: center; }
-        button { width: 100%; padding: 14px; background-color: #3498db; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; }
-        .message { margin-top: 10px; font-size: 18px; font-weight: bold; line-height: 1.6; }
+        
+        /* 버튼 공통 스타일 */
+        button { width: 100%; padding: 14px; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        .btn-blue { background-color: #3498db; }
+        .btn-blue:hover { background-color: #2980b9; }
+        
+        /* 출근/퇴근 전용 버튼 디자인 */
+        .action-box { display: flex; gap: 15px; margin-top: 20px; }
+        .btn-in { background-color: #2ecc71; font-size: 18px; padding: 20px 0; }
+        .btn-in:hover { background-color: #27ae60; }
+        .btn-out { background-color: #e67e22; font-size: 18px; padding: 20px 0; }
+        .btn-out:hover { background-color: #d35400; }
+
+        .message { margin-top: 15px; font-size: 18px; font-weight: bold; line-height: 1.6; }
         .success { color: #2ecc71; }
         .error { color: #e74c3c; }
         .info { color: #7f8c8d; }
@@ -27,7 +40,16 @@
         <div id="auth-form" class="hidden">
             <p style="color: #7f8c8d; margin-bottom: 15px; font-size: 15px;">최초 1회 사원번호 등록이 필요합니다.</p>
             <input type="text" id="employeeId" placeholder="사원번호를 입력하세요">
-            <button onclick="handleManualSubmit()">출퇴근 인증하기</button>
+            <button class="button btn-blue" onclick="handleManualSubmit()">사원번호 인증하기</button>
+        </div>
+
+        <div id="choice-form" class="hidden">
+            <span class="emp-name-tag" id="target-emp-name">○○○ 님</span>
+            <p style="color: #7f8c8d; font-size: 16px;">오늘 근무를 시작하시겠습니까, <br>아니면 종료하시겠습니까?</p>
+            <div class="action-box">
+                <button class="btn-in" onclick="submitAttendance('in')">☀️ 출근하기</button>
+                <button class="btn-out" onclick="submitAttendance('out')">🌙 퇴근하기</button>
+            </div>
         </div>
 
         <div id="status-area">
@@ -41,13 +63,14 @@
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
 
-        // ✨ 미리 오디오 객체 선언 (100% 구동용)
         const audioIn = new Audio('/sounds/clock_in.mp3');
         const audioOut = new Audio('/sounds/clock_out.mp3');
+        
+        let globalEmployeeId = ""; // 사번 임시 보관용 변수
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             if (!token) {
-                showMsg('❌ 올바르지 않은 접근입니다.', 'error');
+                showMsg('❌ 올바르지 않은 접근입니다. (QR 코드가 만료되었거나 없습니다.)', 'error');
                 return;
             }
 
@@ -57,74 +80,94 @@
             if (lastScanTime && (nowMs - parseInt(lastScanTime)) < 60000) {
                 const remainSec = 60 - Math.floor((nowMs - parseInt(lastScanTime)) / 1000);
                 showMsg(`⏳ 방금 처리가 완료되었습니다.\n실수 방지를 위해 ${remainSec}초 후에 다시 시도해주세요.`, 'warning');
+                document.getElementById('reset-btn').classList.remove('hidden');
                 return;
             }
 
             const savedId = localStorage.getItem('savedEmployeeId');
             if (savedId) {
+                // 사번이 이미 저장되어 있다면 회원 이름 조회 후 버튼 창 오픈
+                globalEmployeeId = savedId;
                 document.getElementById('reset-btn').classList.remove('hidden');
-                processAttendance(savedId);
+                await openChoiceForm(savedId);
             } else {
+                // 저장된 사번이 없다면 최초 등록 창 오픈
                 document.getElementById('status-area').classList.add('hidden');
                 document.getElementById('auth-form').classList.remove('hidden');
             }
         });
 
+        // 사원번호 최초 입력 시
         async function handleManualSubmit() {
             const employeeId = document.getElementById('employeeId').value.trim();
             if (!employeeId) return alert('사원번호를 입력해주세요.');
 
-            if (confirm('사원번호를 이 휴대폰에 저장하시겠습니까?')) {
+            if (confirm('입력하신 사원번호를 이 휴대폰에 저장하시겠습니까?\n저장하시면 다음 스캔부터는 사번 입력창이 생략됩니다.')) {
                 localStorage.setItem('savedEmployeeId', employeeId);
             }
+            
+            globalEmployeeId = employeeId;
             document.getElementById('auth-form').classList.add('hidden');
-            document.getElementById('status-area').classList.remove('hidden');
-            await processAttendance(employeeId);
+            document.getElementById('reset-btn').classList.remove('hidden');
+            await openChoiceForm(employeeId);
         }
 
-        async function processAttendance(employeeId) {
+        // DB에서 사원 정보를 찾아 이름을 상단에 박아주고 출/퇴근 버튼 활성화
+        async function openChoiceForm(employeeId) {
+            showMsg('🔄 직원 정보를 조회하는 중입니다...', 'info');
             try {
-                const now = new Date();
-                const kstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-                const todayDate = kstTime.toISOString().split('T')[0];
+                // 사원 확인을 위해 전체 직원 리스트를 잠깐 호출해 이름을 찾습니다
+                const res = await fetch('/api/employees');
+                const employees = await res.json();
+                const currentEmp = employees.find(emp => emp.employeeId === employeeId);
 
-                const resList = await fetch(`/api/attendance?date=${todayDate}`);
-                const list = await resList.json();
-                const myRecord = list.find(item => item.employeeId === employeeId);
-                
-                let type = 'in'; 
-                if (myRecord) {
-                    if (myRecord.clockIn && !myRecord.clockOut) type = 'out'; 
-                    else if (myRecord.clockIn && myRecord.clockOut) {
-                        showMsg('❌ 오늘 이미 출퇴근이 모두 완료되었습니다.', 'info');
-                        return;
-                    }
+                if (!currentEmp) {
+                    showMsg('❌ 등록되지 않은 사원번호입니다. 사번을 재설정해 주세요.', 'error');
+                    return;
                 }
 
+                // UI 연동 및 선택 화면 보이기
+                document.getElementById('target-emp-name').innerText = `✨ ${currentEmp.name} 님`;
+                document.getElementById('status-area').classList.add('hidden');
+                document.getElementById('choice-form').classList.remove('hidden');
+            } catch (e) {
+                showMsg('❌ 사원 정보 로딩 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        // 사용자가 최종적으로 [출근하기] 또는 [퇴근하기] 버튼을 눌렀을 때 실행
+        async function submitAttendance(type) {
+            // 버튼 오작동 방지를 위해 로딩 모드로 전환
+            document.getElementById('choice-form').classList.add('hidden');
+            showMsg('⏳ 출퇴근 기록을 기록하는 중입니다...', 'info');
+
+            try {
                 const response = await fetch('/api/attendance', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ employeeId, type, token })
+                    body: JSON.stringify({ employeeId: globalEmployeeId, type, token })
                 });
 
                 const result = await response.json();
 
                 if (response.ok) {
+                    const now = new Date();
+                    const kstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
                     const month = kstTime.getMonth() + 1;
                     const date = kstTime.getDate();
                     const hours = kstTime.getHours();
                     const minutes = String(kstTime.getMinutes()).padStart(2, '0');
                     const typeText = type === 'in' ? '출근' : '퇴근';
 
-                    // ✨ 성공 시 해당 타입의 MP3 즉시 재생
+                    // 100% 신뢰성 보장 재생 (터치 기반이므로 무조건 소리가 납니다)
                     if (type === 'in') {
-                        audioIn.play().catch(e => console.log("오디오 재생 제한"));
+                        audioIn.play().catch(e => console.log("재생 차단 방어"));
                     } else {
-                        audioOut.play().catch(e => console.log("오디오 재생 제한"));
+                        audioOut.play().catch(e => console.log("재생 차단 방어"));
                     }
 
                     showMsg(`✅ ${result.name}님, ${month}월 ${date}일 ${hours}시 ${minutes}분에 ${typeText}하였습니다.`, 'success');
-                    localStorage.setItem('lastScanTime', Date.now());
+                    localStorage.setItem('lastScanTime', Date.now()); // 쿨타임 발동
                 } else {
                     showMsg(`❌ 처리 실패: ${result.error}`, 'error');
                 }
