@@ -24,7 +24,6 @@
     </style>
 </head>
 <body>
-
     <div class="qr-container">
         <h1>출퇴근 인증 QR</h1>
         <p class="subtitle">스마트폰 카메라로 아래 QR 코드를 스캔하세요.</p>
@@ -33,7 +32,6 @@
         
         <div class="timer-text" id="timer">QR 갱신까지: 10초</div>
     </div>
-
     <script>
         let qrcode = new QRCode(document.getElementById("qrcode"), {
             width: 300,
@@ -43,20 +41,15 @@
             correctLevel : QRCode.CorrectLevel.H
         });
 
-        // 10초 주기 토큰 생성 로직 (팀 구분 없이 공통)
+        // 10초 주기 토큰 생성 (난독화 +83749 적용)
         function generateToken() {
-            const now = new Date();
-            const kstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // 한국 시간
-            // 10000ms(10초) 주기로 timestamp 계산
-            const timestamp = Math.floor(kstTime.getTime() / 10000); 
-            return String((timestamp) % 900000 + 100000); // 6자리 랜덤 보안 토큰
+            const timeSlice = Math.floor(Date.now() / 10000) + 83749;
+            return timeSlice;
         }
 
-        // 출퇴근용 웹페이지 주소 생성 (kny-company.com 적용)
         function generateQRData() {
             const token = generateToken();
-            const domain = window.location.origin; // 현재 도메인 (kny-company.com)
-            // 출퇴근 등록 화면(employee/scan.html)으로 토큰만 넘김 (team 파라미터 삭제)
+            const domain = window.location.origin; 
             return `${domain}/employee/scan.html?token=${token}`;
         }
 
@@ -66,20 +59,15 @@
             qrcode.makeCode(qrData);
         }
 
-        // 1초마다 화면 타이머 업데이트 및 10초마다 QR 갱신
         setInterval(() => {
             const seconds = new Date().getSeconds();
-            const remain = 10 - (seconds % 10); // 10초 단위 계산
+            const remain = 10 - (seconds % 10); 
             
             document.getElementById('timer').innerText = `QR 갱신까지: ${remain}초`;
             
-            // 나머지가 10일 때 (즉 주기가 새로 시작될 때) QR코드 새로고침
-            if (remain === 10) {
-                updateQR();
-            }
+            if (remain === 10) updateQR();
         }, 1000);
 
-        // 페이지 최초 로드 시 1회 실행
         updateQR();
     </script>
 </body>
