@@ -5,7 +5,6 @@
     <title>KNY Company - 관리자 통합 대시보드</title>
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-    
     <style>
         body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background: #f1f2f6; }
         .sidebar { width: 260px; background: #2c3e50; color: white; padding: 20px; }
@@ -37,21 +36,17 @@
     <div class="menu-item" onclick="switchTab('qr-sec')">🔲 시스템 QR 발급</div>
 </div>
 <div class="main-content">
-    
     <div id="portfolio-sec" class="panel-section">
         <h2>✨ 홈페이지 포트폴리오 작성 (블로그형)</h2>
         <p style="color:#7f8c8d; margin-bottom: 20px;">이미지는 700KB 이하만 본문에 삽입할 수 있습니다.</p>
-        
         <div class="form-group">
             <label>행사 타이틀</label>
             <input type="text" id="p-title" placeholder="예: 2026년 과천시 야외 물놀이장 운영" required>
         </div>
-        
         <div class="form-group" style="margin-bottom: 60px;">
             <label>본문 내용 (사진 및 텍스트 편집)</label>
             <div id="editor"></div>
         </div>
-        
         <button class="btn" onclick="savePortfolio()">실적 저장 및 홈페이지 노출</button>
     </div>
 
@@ -178,7 +173,6 @@
         if(sectionId === 'waiting-sec' || sectionId === 'qr-sec') loadActiveTeams(sectionId);
     }
 
-    // 🛠️ 직원 등록 로직 (DB 스키마와 완벽 동기화)
     async function registerEmployee(e) {
         e.preventDefault();
         const payload = {
@@ -200,14 +194,13 @@
                 loadEmployees();
             } else {
                 const errData = await res.json().catch(() => ({}));
-                alert('등록 실패: ' + (errData.error || '서버 응답 오류 (코드: ' + res.status + ')'));
+                alert('등록 실패: ' + (errData.error || '서버 응답 오류'));
             }
         } catch(err) {
             alert('서버와 통신할 수 없습니다.');
         }
     }
 
-    // 🛠️ 직원 명부 로드 (DB 스키마와 완벽 동기화)
     async function loadEmployees() {
         try {
             const res = await fetch('/api/employees');
@@ -240,7 +233,6 @@
         }
     }
 
-    // 🛠️ 직원 상태 수정 (재직/퇴사)
     async function updateEmpStatus(empId, newStatus) {
         try {
             const res = await fetch(`/api/employees`, { 
@@ -257,7 +249,6 @@
         } catch(e) { alert('통신 오류'); }
     }
 
-    // 🛠️ 직원 데이터 완전히 삭제
     async function deleteEmp(empId) {
         if(!confirm('이 직원의 모든 데이터를 시스템에서 영구 삭제하시겠습니까?')) return;
         try {
@@ -271,7 +262,6 @@
         } catch(e) { alert('통신 오류'); }
     }
 
-    // 오늘의 근태 현황 조회
     async function loadAttendance() {
         const today = new Date().toISOString().split('T')[0];
         try {
@@ -290,16 +280,24 @@
         }
     }
 
+    // 💡 [핵심 수정 구간] 직원 목록에서 고유한 행사장을 프론트에서 직접 추출하여 드롭다운에 추가
     async function loadActiveTeams(tabId) {
         try {
-            const res = await fetch('/api/employees/teams');
-            const teams = await res.json();
+            const res = await fetch('/api/employees');
+            const list = await res.json();
+            
+            // 모든 직원의 team_name 중에서 빈 값을 제외하고 중복을 제거함
+            const teams = [...new Set(list.map(emp => emp.team_name).filter(Boolean))];
+
             const selector = tabId === 'waiting-sec' ? document.getElementById('waiting-team-selector') : document.getElementById('qr-team-selector');
+
             if(teams.length === 0) {
                 selector.innerHTML = '<option value="">등록된 팀(행사장)이 없습니다</option>';
                 return;
             }
+
             selector.innerHTML = teams.map(team => `<option value="${team}">${team}</option>`).join('');
+
             if(tabId === 'waiting-sec') loadWaitlistData();
             if(tabId === 'qr-sec') generateCustomerQR();
         } catch (e) { console.log(e); }
