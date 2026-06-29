@@ -8,34 +8,31 @@
         body { font-family: 'Noto Sans KR', sans-serif; background-color: #f5f6fa; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; transition: background-color 0.4s ease; }
         .wrapper { background: white; padding: 35px 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); max-width: 400px; width: 100%; text-align: center; position: relative; }
         
-        /* 1. 오디오 토글 스위치 */
         .audio-toggle { position: absolute; top: 15px; right: 15px; background: #e2e8f0; border: none; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; }
         .audio-toggle.active { background: #3498db; color: white; }
 
-        h2 { color: #7f8c8d; font-size: 16px; margin-top: 15px; }
+        h2 { color: #7f8c8d; font-size: 18px; margin-top: 15px; }
         .my-number { font-size: 48px; color: #2c3e50; font-weight: 900; margin: 10px 0; }
         
-        /* 시각 효과 대상 박스 */
-        .status-card { background: #edf2f7; border-radius: 16px; padding: 25px; margin: 20px 0; transition: all 0.3s ease; }
+        .status-card { background: #edf2f7; border-radius: 16px; padding: 25px; margin: 20px 0; }
         
-        /* 숫자가 줄어들 때 다이내믹 팝업 애니메이션 */
+        /* ✨ 숫자가 줄어들 때 튀어오르는 애니메이션 */
         .remain-count { font-size: 64px; color: #e74c3c; font-weight: 900; display: inline-block; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .remain-count.pop { transform: scale(1.4); color: #2ecc71; }
 
-        /* 3. 새로고침 시 무음 방어선 레이어 */
         #safety-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(44, 62, 80, 0.95); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; cursor: pointer; text-align: center; }
         #safety-overlay h3 { font-size: 22px; margin-bottom: 10px; }
         .hidden { display: none !important; }
         
-        /* 플래시 백그라운드 효과 */
+        /* ✨ 순서 줄어들 때 화면 전체 플래시 효과 */
         body.flash-green { background-color: #2ecc71; }
     </style>
 </head>
 <body>
 
 <div id="safety-overlay" class="hidden" onclick="unlockOverlay()">
-    <h3>🔔 대기 현황 업데이트</h3>
-    <p>실시간 소리 안내를 유지하려면 화면을 한 번 터치해주세요.</p>
+    <h3>🔔 대기 현황 실시간 감지 중</h3>
+    <p>안내 멘트와 효과음을 정상 수신하려면 화면을 한 번 터치해주세요.</p>
 </div>
 
 <div class="wrapper">
@@ -43,10 +40,10 @@
         <span id="audioIcon">🔇</span> <span id="audioTxt">소리 알림 끔</span>
     </button>
 
-    <h2 id="locName">📍 행사장 확인 중...</h2>
+    <h2 id="teamName">📍 행사장 확인 중...</h2>
     <div class="my-number" id="myNum">내 번호: --번</div>
 
-    <div class="status-card" id="statusCard">
+    <div class="status-card">
         <p style="font-size: 16px; font-weight: bold; color: #4a5568;">내 앞 대기 팀수</p>
         <div class="remain-count" id="remainCount">--</div>
         <p style="margin-top: 10px; color:#7f8c8d; font-size:14px;" id="statusMsg">순서를 실시간으로 계산하고 있습니다.</p>
@@ -56,63 +53,42 @@
 <script>
     const urlParams = new URLSearchParams(window.location.search);
     const waitlistId = urlParams.get('id');
-    const locationId = urlParams.get('locationId');
+    const teamName = urlParams.get('team');
     
-    const dingDong = new Audio('/sounds/ding_dong.mp3'); // 미리 효과음 준비
-    
+    const dingDong = new Audio('/sounds/ding_dong.mp3');
     let lastRemain = null;
     let isAudioOn = false;
 
     document.addEventListener('DOMContentLoaded', () => {
-        // 새로고침 방어선 판단
         if (localStorage.getItem('waiting_audio_preference') === 'on') {
             document.getElementById('safety-overlay').classList.remove('hidden');
         }
-        initFetch();
-        setInterval(checkStatus, 4000); // 4초마다 갱신 루프 구동
+        document.getElementById('teamName').innerText = `📍 ${decodeURIComponent(teamName)}`;
+        fetchStatus();
+        setInterval(fetchStatus, 4000);
     });
 
-    // 2. 화면 복귀 감지 (Visibility API)
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-            checkStatus(); // 주머니에서 꺼내 화면을 보는 즉시 데이터 갱신
-        }
+        if (document.visibilityState === 'visible') fetchStatus();
     });
 
-    async function initFetch() {
-        try {
-            const res = await fetch(`/api/waitlist/status?id=${waitlistId}&locationId=${locationId}`);
-            const data = await res.json();
-            document.getElementById('locName').innerText = `📍 ${data.locationName}`;
-            document.getElementById('myNum').innerText = `내 번호: ${data.waitingNumber}번`;
-            document.getElementById('remainCount').innerText = data.remainTeams;
-            lastRemain = data.remainTeams;
-        } catch (e) { console.log(e); }
-    }
-
-    async function checkStatus() {
+    async function fetchStatus() {
         if (!waitlistId) return;
         try {
-            const res = await fetch(`/api/waitlist/status?id=${waitlistId}&locationId=${locationId}`);
+            const res = await fetch(`/api/waitlist/status?id=${waitlistId}&teamName=${encodeURIComponent(teamName)}`);
             const data = await res.json();
             
+            document.getElementById('myNum').innerText = `내 번호: ${data.waitingNumber}번`;
             const currentRemain = data.remainTeams;
             const countEl = document.getElementById('remainCount');
 
             if (lastRemain !== null && currentRemain < lastRemain) {
-                // 💥 순서가 줄어들었을 때 연출 트리거 발동
-                
-                // [시각 효과 1] 튀어오르는 애니메이션
+                // 💥 순서 차감 연출 시동
                 countEl.classList.add('pop');
-                // [시각 효과 2] 배경화면 녹색 깜빡임(Flash) 효과
                 document.body.classList.add('flash-green');
                 
-                // [청각 효과] 오디오 상태가 켜져 있으면 띵동 재생
-                if (isAudioOn) {
-                    dingDong.play().catch(e => console.log('재생 차단 방어'));
-                }
+                if (isAudioOn) dingDong.play().catch(e => console.log('차단방어'));
 
-                // 0.6초 뒤 원래대로 복구
                 setTimeout(() => {
                     countEl.classList.remove('pop');
                     document.body.classList.remove('flash-green');
@@ -125,12 +101,11 @@
             if (data.status === 'called') {
                 document.getElementById('statusMsg').innerHTML = "<b style='color:#e74c3c; font-size:18px;'>지금 입장해 주세요!</b>";
             } else if (data.status === 'completed') {
-                document.getElementById('statusMsg').innerText = "입장이 완료되었습니다. 감사합니다.";
+                document.getElementById('statusMsg').innerText = "입장이 완료되었습니다.";
             }
         } catch (e) { console.log(e); }
     }
 
-    // 1. 명시적인 토글 버튼 오디오 권한 획득 처리
     function toggleAudioMode() {
         const btn = document.getElementById('audioBtn');
         if (!isAudioOn) {
@@ -139,7 +114,7 @@
             btn.classList.add('active');
             document.getElementById('audioIcon').innerText = "🔊";
             document.getElementById('audioTxt').innerText = "소리 알림 켬";
-            dingDong.play(); // 즉시 권한 뚫기용 무음/유음 테스트 재생
+            dingDong.play();
         } else {
             isAudioOn = false;
             localStorage.setItem('waiting_audio_preference', 'off');
@@ -149,10 +124,9 @@
         }
     }
 
-    // 3. 레이어 터치 시 오디오를 즉시 활성화시키며 방어선 해제
     function unlockOverlay() {
         document.getElementById('safety-overlay').classList.add('hidden');
-        toggleAudioMode(); // 복구 완료
+        toggleAudioMode();
     }
 </script>
 </body>
