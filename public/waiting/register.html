@@ -15,35 +15,29 @@
         button { width: 100%; padding: 16px; background-color: #3498db; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
         .error-screen { text-align: center; padding: 40px 20px; }
         .error-screen h2 { color: #e74c3c; font-size: 26px; margin-bottom: 15px; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
-
 <div class="wrapper" id="main-content">
     <div id="form-area">
         <h1>대기 접수 등록</h1>
         <div class="loc-name" id="team-title">📍 행사장 확인 중...</div>
-
         <form id="waitingForm" onsubmit="handleSubmit(event)">
             <label>방문자 성명</label>
             <input type="text" id="name" required placeholder="성함을 입력해주세요">
-
             <label>연락처 (하이픈 없이 입력)</label>
             <input type="text" id="phone" required placeholder="01012345678">
-
             <label>동반 인원수</label>
             <input type="number" id="count" min="1" value="1" required>
-
             <label class="chk-container">
                 <input type="checkbox" id="kakao" checked>
                 <span>카카오톡 알림톡 수신에 동의합니다.</span>
             </label>
-
             <button type="submit">대기 등록하기</button>
         </form>
     </div>
-
-    <div id="error-area" class="error-screen class hidden">
+    <div id="error-area" class="error-screen hidden">
         <h2>🚫 접수 불가 (만료된 QR)</h2>
         <p style="color:#7f8c8d; font-size:16px; line-height:1.6; word-break:keep-all;">
             해당 QR 코드는 만료되었거나 원격에서 복사된 링크입니다.<br>
@@ -51,29 +45,24 @@
         </p>
     </div>
 </div>
-
 <script>
     const urlParams = new URLSearchParams(window.location.search);
     const teamName = urlParams.get('team');
-    const scanToken = urlParams.get('token'); // 10초 단위 타임스탬프 토큰
+    const scanToken = urlParams.get('token'); 
 
     document.addEventListener('DOMContentLoaded', () => {
         if (!teamName || !scanToken) {
             blockAccess();
             return;
         }
-
-        // 🛡️ [강력한 보안 검증 방어선]
+        
         const currentSlice = Math.floor(Date.now() / 10000);
         const tokenDiff = currentSlice - parseInt(scanToken);
 
-        // 손님이 QR을 스캔해서 브라우저가 열리는 속도를 감안해 딱 20초(차이값 2)까지만 허용합니다.
-        // 사진을 찍어서 집으로 가져갔거나 링크를 복사해뒀다면 이 시간 차이가 수백~수천을 넘어가므로 차단됩니다.
         if (tokenDiff < 0 || tokenDiff > 2) { 
             blockAccess();
             return;
         }
-
         document.getElementById('team-title').innerText = `📍 ${decodeURIComponent(teamName)}`;
     });
 
