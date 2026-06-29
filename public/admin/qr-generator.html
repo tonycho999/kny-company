@@ -16,7 +16,7 @@
 
         const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
         const currentSlice = Math.floor(nowKst.getTime() / 10000);
-        const tokenDiff = currentSlice - (parseInt(adminToken) - 55555);
+        const tokenDiff = currentSlice - parseInt(adminToken);
         
         if (tokenDiff < 0 || tokenDiff > 5) { 
             document.write('<h2 style="color:red; text-align:center; margin-top:50px;">🚫 보안 토큰이 만료되었습니다.</h2>');
