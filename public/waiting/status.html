@@ -22,6 +22,7 @@
         .hidden { display: none !important; }
         
         body.flash-green { background-color: #2ecc71; }
+        body.flash-red { background-color: #e74c3c; } /* 내 호출 시 빨간색 점멸 */
     </style>
 </head>
 <body>
@@ -43,15 +44,24 @@
 </div>
 
 <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const waitlistId = urlParams.get('id');
-    const teamName = urlParams.get('team');
+    const waitlistId = sessionStorage.getItem('waitlist_id');
+    const teamName = sessionStorage.getItem('waitlist_team');
     
-    const dingDong = new Audio('/sounds/ding_dong.mp3');
+    // 💡 상황별 오디오 파일 준비
+    const audioProgress = new Audio('/sounds/wait_progress.mp3');
+    const audioNext = new Audio('/sounds/wait_next.mp3');
+    const audioCalled = new Audio('/sounds/wait_called.mp3');
+    
     let lastRemain = null;
+    let lastStatus = 'waiting';
     let isAudioOn = false;
 
     document.addEventListener('DOMContentLoaded', () => {
+        if (!waitlistId || !teamName) {
+            alert('잘못된 접근이거나 데이터가 만료되었습니다.');
+            return;
+        }
+
         if (localStorage.getItem('waiting_audio_preference') === 'on') {
             document.getElementById('safety-overlay').classList.remove('hidden');
         }
@@ -72,26 +82,47 @@
             
             document.getElementById('myNum').innerText = `내 번호: ${data.waitingNumber}번`;
             const currentRemain = data.remainTeams;
+            const currentStatus = data.status;
             const countEl = document.getElementById('remainCount');
 
-            if (lastRemain !== null && currentRemain < lastRemain) {
+            // 💡 1. 본인이 호출되었을 때 (최우선 순위)
+            if (currentStatus === 'called' && lastStatus !== 'called') {
+                document.body.classList.add('flash-red');
+                document.getElementById('statusMsg').innerHTML = "<b style='color:#e74c3c; font-size:20px;'>지금 즉시 입장해 주세요!</b>";
+                
+                if (isAudioOn) {
+                    audioCalled.play().catch(e => console.log('Audio block'));
+                }
+            }
+            // 💡 2. 대기 인원이 줄어들었을 때 (호출 상태가 아닐 때만)
+            else if (currentStatus === 'waiting' && lastRemain !== null && currentRemain < lastRemain) {
                 countEl.classList.add('pop');
                 document.body.classList.add('flash-green');
                 
-                if (isAudioOn) dingDong.play().catch(e => console.log('차단방어'));
+                if (isAudioOn) {
+                    if (currentRemain === 1) {
+                        // 내 앞에 딱 1팀 남았을 때 (다음 차례 멘트)
+                        audioNext.play().catch(e => console.log('Audio block'));
+                    } else {
+                        // 단순히 순서가 당겨졌을 때
+                        audioProgress.play().catch(e => console.log('Audio block'));
+                    }
+                }
+                
                 setTimeout(() => {
                     countEl.classList.remove('pop');
                     document.body.classList.remove('flash-green');
                 }, 600);
             }
+
             countEl.innerText = currentRemain;
             lastRemain = currentRemain;
+            lastStatus = currentStatus;
 
-            if (data.status === 'called') {
-                document.getElementById('statusMsg').innerHTML = "<b style='color:#e74c3c; font-size:18px;'>지금 입장해 주세요!</b>";
-            } else if (data.status === 'completed') {
+            if (currentStatus === 'completed') {
                 document.getElementById('statusMsg').innerText = "입장이 완료되었습니다.";
             }
+
         } catch (e) { console.log(e); }
     }
 
@@ -103,7 +134,9 @@
             btn.classList.add('active');
             document.getElementById('audioIcon').innerText = "🔊";
             document.getElementById('audioTxt').innerText = "소리 알림 켬";
-            dingDong.play();
+            
+            // 최초 터치 시 빈 소리라도 한 번 틀어주어 브라우저의 미디어 재생 제한을 풉니다.
+            audioProgress.play().then(() => { audioProgress.pause(); audioProgress.currentTime = 0; }).catch(e => {});
         } else {
             isAudioOn = false;
             localStorage.setItem('waiting_audio_preference', 'off');
