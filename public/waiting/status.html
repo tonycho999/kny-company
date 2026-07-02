@@ -38,7 +38,6 @@
 </head>
 <body>
 
-<!-- 💡 브라우저 오디오 정책을 뚫기 위한 최초 터치 필수 화면 -->
 <div id="safety-overlay" onclick="unlockAudio()">
     <h3>🔔 소리 알림 켜기</h3>
     <p>고객님의 차례가 되면 <b>음성 안내</b>가 나옵니다.<br>소리를 켜시려면 아래 버튼을 눌러주세요.</p>
@@ -66,11 +65,13 @@
     const audioProgress = new Audio('/sounds/wait_progress.mp3');
     const audioNext = new Audio('/sounds/wait_next.mp3');
     const audioCalled = new Audio('/sounds/wait_called.mp3');
-    
+    // 빈 오디오 핑(테스트용) 생성
+    const audioPing = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA'); 
+
     let lastRemain = null;
     let lastStatus = 'waiting';
-    let isAudioOn = true; // 기본적으로 소리가 켜진 상태로 시작하게 유도
-    let isUnlocked = false; // 브라우저 잠금 해제 여부
+    let isAudioOn = true; 
+    let isUnlocked = false; 
 
     document.addEventListener('DOMContentLoaded', () => {
         if (!waitlistId || !teamName) {
@@ -82,27 +83,40 @@
         setInterval(fetchStatus, 4000);
     });
 
+    // 💡 화면이 다시 켜졌을 때 (백그라운드에서 돌아왔을 때)
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') fetchStatus();
+        if (document.visibilityState === 'visible') {
+            fetchStatus(); // 즉시 상태 갱신
+            
+            // 오디오 권한이 아직 살아있는지 무음 핑을 보내 테스트합니다.
+            if (isAudioOn && isUnlocked) {
+                audioPing.play().catch(e => {
+                    // 권한이 뺏겼다면(에러 발생) 다시 오버레이 창을 띄워 터치를 유도합니다.
+                    console.log("Audio privilege lost. Requesting touch again.");
+                    isUnlocked = false;
+                    document.getElementById('safety-overlay').classList.remove('hidden');
+                });
+            }
+        }
     });
 
-    // 💡 [핵심] 사용자가 화면을 터치하는 순간 오디오 잠금을 해제합니다.
+    // 💡 터치 시 오디오 강제 활성화
     function unlockAudio() {
         if(isUnlocked) return;
         
-        // 브라우저 정책을 뚫기 위해 묵음(또는 잠깐 재생)으로 오디오 채널을 엽니다.
         audioProgress.play().then(() => { audioProgress.pause(); audioProgress.currentTime = 0; }).catch(()=>{});
         audioNext.play().then(() => { audioNext.pause(); audioNext.currentTime = 0; }).catch(()=>{});
         audioCalled.play().then(() => { audioCalled.pause(); audioCalled.currentTime = 0; }).catch(()=>{});
+        audioPing.play().then(() => { audioPing.pause(); audioPing.currentTime = 0; }).catch(()=>{});
         
         isUnlocked = true;
         document.getElementById('safety-overlay').classList.add('hidden');
         
-        // UI 반영
         const btn = document.getElementById('audioBtn');
         btn.classList.add('active');
         document.getElementById('audioIcon').innerText = "🔊";
         document.getElementById('audioTxt').innerText = "소리 켬";
+        isAudioOn = true;
     }
 
     async function fetchStatus() {
@@ -116,7 +130,6 @@
             const currentStatus = data.status;
             const countEl = document.getElementById('remainCount');
 
-            // 1. 본인 호출 시
             if (currentStatus === 'called' && lastStatus !== 'called') {
                 document.body.classList.add('flash-red');
                 document.getElementById('statusMsg').innerHTML = "<b style='color:#e74c3c; font-size:20px;'>지금 즉시 입장해 주세요!</b>";
@@ -126,7 +139,6 @@
                     audioCalled.play().catch(e => console.log('Audio blocked', e));
                 }
             }
-            // 2. 대기 인원이 줄어들었을 때
             else if (currentStatus === 'waiting' && lastRemain !== null && currentRemain < lastRemain) {
                 countEl.classList.add('pop');
                 document.body.classList.add('flash-green');
@@ -160,14 +172,10 @@
     function toggleAudioMode() {
         const btn = document.getElementById('audioBtn');
         if (!isAudioOn) {
-            isAudioOn = true;
-            btn.classList.add('active');
-            document.getElementById('audioIcon').innerText = "🔊";
-            document.getElementById('audioTxt').innerText = "소리 켬";
-            // 켤 때 잠금 해제 시도
             unlockAudio();
         } else {
             isAudioOn = false;
+            isUnlocked = false; // 수동으로 껐으므로 잠금 상태로 간주
             btn.classList.remove('active');
             document.getElementById('audioIcon').innerText = "🔇";
             document.getElementById('audioTxt').innerText = "소리 끔";
