@@ -10,35 +10,37 @@
         body { font-family: 'Noto Sans KR', sans-serif; color: #333; line-height: 1.6; }
         a { text-decoration: none; color: inherit; }
 
-        /* 상단 네비게이션 바 */
+        /* ✨ 상단 네비게이션 바 (로고 배경색과 동일하게 맞춤) */
         header {
             position: fixed; top: 0; left: 0; width: 100%;
-            background-color: #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            background-color: #3b428b; /* 로고와 동일한 딥 인디고 색상 */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
             z-index: 1000; display: flex; justify-content: space-between; align-items: center;
             padding: 15px 40px;
+            color: #ffffff; /* 배경이 어두워졌으므로 글자는 흰색으로 */
         }
         .logo img { height: 80px; vertical-align: middle; border: none; }
         
         .nav-menu { display: flex; list-style: none; align-items: center; }
         .nav-menu li { margin-right: 30px; font-weight: 500; }
-        .nav-menu li a:hover { color: #3498db; }
+        .nav-menu li a { color: #ffffff; transition: color 0.3s ease; }
+        .nav-menu li a:hover { color: #f1c40f; } /* 마우스 올렸을 때 포인트 노란색 */
 
         /* 각 섹션 공통 스타일 */
         section {
-            padding: 120px 40px 80px; min-height: 100vh;
+            padding: 140px 40px 80px; min-height: 100vh;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             text-align: center;
         }
         section h2 { font-size: 36px; margin-bottom: 20px; color: #2c3e50; font-weight: bold; }
         section p { font-size: 18px; color: #555; max-width: 800px; word-break: keep-all; }
 
-        /* 섹션별 배경색 구분 */
-        #home { background-color: #f8f9fa; }
+        /* ✨ 섹션별 배경색 구분 (새로운 로고 색상에 맞춰 쿨톤으로 변경) */
+        #home { background-color: #f4f5f8; } 
         #about { background-color: #ffffff; }
-        #projects { background-color: #e9ecef; }
+        #projects { background-color: #eef0f5; }
         #contact { background-color: #ffffff; }
-
-        .highlight { color: #3498db; font-weight: bold; }
+        .highlight { color: #3b428b; font-weight: bold; } /* 강조 텍스트도 남색으로 */
         
         /* 사업 분야 리스트 스타일 */
         .service-list {
@@ -46,12 +48,12 @@
             display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; max-width: 900px;
         }
         .service-list li {
-            background: #f1f2f6; padding: 15px 25px; border-radius: 30px;
+            background: #f4f5f8; padding: 15px 25px; border-radius: 30px;
             font-size: 18px; font-weight: bold; color: #2f3640;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
 
-        /* ✨ 포트폴리오 그리드 스타일 */
+        /* 포트폴리오 그리드 스타일 */
         .portfolio-grid { 
             display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
             gap: 25px; max-width: 1200px; width: 100%; margin-top: 40px; padding: 0 20px; 
@@ -60,7 +62,7 @@
             background: white; border-radius: 12px; overflow: hidden; 
             box-shadow: 0 5px 15px rgba(0,0,0,0.08); text-align: left; transition: transform 0.2s; 
         }
-        .portfolio-card:hover { transform: translateY(-5px); }
+        .portfolio-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(59, 66, 139, 0.2); }
         .portfolio-card img { width: 100%; height: 200px; object-fit: cover; background: #ddd; }
         .portfolio-card .card-body { padding: 20px; }
         .portfolio-card h3 { font-size: 18px; color: #2c3e50; margin-bottom: 10px; font-weight: bold; }
@@ -68,29 +70,28 @@
 
         /* 연락처 박스 스타일 */
         .contact-box {
-            background: #f8f9fa; border: 2px solid #e1e8ed; border-radius: 15px;
+            background: #f4f5f8; border: 2px solid #e1e8ed; border-radius: 15px;
             padding: 40px; margin-top: 30px; text-align: center;
             box-shadow: 0 10px 20px rgba(0,0,0,0.05);
         }
         .contact-box h3 { font-size: 28px; color: #e74c3c; margin-bottom: 10px; }
         .contact-box p { font-size: 22px; font-weight: bold; color: #2c3e50; margin: 10px 0; }
-        .contact-time { display: inline-block; background: #2c3e50; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-bottom: 20px; }
+        .contact-time { display: inline-block; background: #3b428b; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-bottom: 20px; }
 
-        /* 하단 사업자 정보 푸터 */
+        /* ✨ 하단 사업자 정보 푸터 (메인 컬러보다 살짝 어두운 톤으로 무게감 부여) */
         footer {
-            background-color: #2c3e50; color: #bdc3c7; text-align: center;
+            background-color: #2c3065; color: #bdc3c7; text-align: center;
             padding: 40px 20px; font-size: 14px; line-height: 1.8;
-            border-top: 1px solid #34495e;
+            border-top: 1px solid #232650;
         }
         .footer-info { max-width: 1000px; margin: 0 auto; text-align: center; }
         .footer-info p { margin: 4px 0; }
         .footer-info span { margin: 0 10px; color: #7f8c8d; }
         .footer-info a { text-decoration: underline; color: #ffffff; }
-        .footer-info a:hover { color: #3498db; }
+        .footer-info a:hover { color: #f1c40f; }
     </style>
 </head>
 <body>
-
     <header>
         <div class="logo">
             <a href="#home">
@@ -144,16 +145,16 @@
             <span class="contact-time">문자, 카톡, 이메일 24시간 무료 상담 환영</span>
             <p>📞 010 - 6284 - 5551</p>
             <p>📞 010 - 3469 - 3443 / 010 - 6474 - 8368 / 010 - 6722 - 5392</p>
-            <p style="color: #3498db;">✉️ kny-company@naver.com</p>
+            <p style="color: #3b428b;">✉️ kny-company@naver.com</p>
         </div>
     </section>
 
     <footer>
         <div class="footer-info">
             <p style="color: #ffffff; font-weight: bold; font-size: 16px; margin-bottom: 10px;">케이앤와이 주식회사 (KNY Company)</p>
-            <p>대표 : 강경란 <span>|</span> 주소 : 경기도 동두천시 삼육사로 1084-15, 2층</p>
+            <p>대표 : 강경란 <span>|</span> 주소 : 서울 노원구 상계동 1320, 상가동 2층</p>
             <p>사업자등록번호 : 388-81-01529 <span>|</span> 통신판매업신고 : 신고면제</p>
-            <p>전화 : 010-6284-5551 <span>|</span> 메일 : kny-company@naver.com <span>|</span> <a href="/terms">이용약관 보기 ▶</a></p>
+            <p>전화 : 1566-4308 <span>|</span> 메일 : kny-company@naver.com <span>|</span> <a href="/terms">이용약관 보기 ▶</a></p>
             <p style="margin-top: 25px; font-size: 12px; color: #7f8c8d;">&copy; 2026 KNY Company. All Rights Reserved.</p>
         </div>
     </footer>
@@ -169,21 +170,15 @@
                     grid.innerHTML = `<p style="grid-column: 1/-1; color:#95a5a6; padding: 40px 0;">아직 등록된 포트폴리오 실적이 없습니다.</p>`;
                     return;
                 }
-
                 grid.innerHTML = data.map(item => {
-                    // 에디터 내용(HTML)에서 첫 번째 <img> 태그의 src 속성을 찾아 대표 이미지로 사용합니다.
-                    // 만약 이미지가 없다면 기본 로고를 사용합니다.
                     const tempDiv = document.createElement('div');
                     tempDiv.innerHTML = item.content;
                     const firstImage = tempDiv.querySelector('img');
                     const thumbnailUrl = firstImage ? firstImage.src : '/images/kny-logo.png';
                     
-                    // HTML 태그를 모두 제거하고 순수 텍스트만 뽑아 요약(description)으로 씁니다.
                     const plainText = tempDiv.textContent || tempDiv.innerText || "";
                     const description = plainText.length > 50 ? plainText.substring(0, 50) + '...' : plainText;
-
                     return `
-                        <!-- 💡 클릭 시 상세 페이지로 이동하도록 <a> 태그로 감싸고 쿼리 파라미터(id)를 전달합니다. -->
                         <a href="/portfolio-detail.html?id=${item.id}" class="portfolio-card">
                             <img src="${thumbnailUrl}" alt="${item.title}">
                             <div class="card-body">
@@ -198,6 +193,5 @@
             }
         });
     </script>
-
 </body>
 </html>
