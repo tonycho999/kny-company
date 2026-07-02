@@ -34,7 +34,8 @@
                 <input type="checkbox" id="kakao" checked>
                 <span>카카오톡 알림톡 수신에 동의합니다.</span>
             </label>
-            <button type="submit">대기 등록하기</button>
+            <!-- 💡 버튼 클릭 시 로딩 상태를 표시하기 위해 ID 추가 -->
+            <button type="submit" id="submitBtn">대기 등록하기</button>
         </form>
     </div>
     <div id="error-area" class="error-screen hidden">
@@ -50,11 +51,16 @@
     const teamName = urlParams.get('team');
     const scanToken = urlParams.get('token'); 
 
+    // 💡 접수 완료 음성 파일 준비
+    const audioRegistered = new Audio('/sounds/wait_registered.mp3');
+
     document.addEventListener('DOMContentLoaded', () => {
         if (!teamName || !scanToken) {
             blockAccess();
             return;
         }
+
+        window.history.replaceState({}, document.title, window.location.pathname);
         
         const currentSlice = Math.floor(Date.now() / 10000);
         const tokenDiff = currentSlice - parseInt(scanToken);
@@ -73,6 +79,11 @@
 
     async function handleSubmit(e) {
         e.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        btn.innerText = "접수 처리 중...";
+        btn.style.backgroundColor = "#95a5a6";
+        btn.disabled = true;
+
         const payload = {
             team_name: teamName,
             name: document.getElementById('name').value.trim(),
@@ -90,12 +101,26 @@
             const result = await res.json();
             
             if(res.ok) {
-                window.location.href = `/waiting/status.html?id=${result.id}&team=${encodeURIComponent(teamName)}`;
+                // 💡 접수 완료 안내 멘트 재생 후 2.5초 뒤 페이지 이동
+                try { await audioRegistered.play(); } catch(err) { console.log('Audio Blocked'); }
+                
+                sessionStorage.setItem('waitlist_id', result.id);
+                sessionStorage.setItem('waitlist_team', teamName);
+                
+                setTimeout(() => {
+                    window.location.href = `/waiting/status.html`;
+                }, 2500); // 멘트 길이에 맞춰 딜레이 시간 조절
             } else {
                 alert(`등록 실패: ${result.error}`);
+                btn.innerText = "대기 등록하기";
+                btn.style.backgroundColor = "#3498db";
+                btn.disabled = false;
             }
         } catch {
             alert('서버 통신 오류');
+            btn.innerText = "대기 등록하기";
+            btn.style.backgroundColor = "#3498db";
+            btn.disabled = false;
         }
     }
 </script>
