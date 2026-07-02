@@ -16,7 +16,6 @@
         .btn-qr { display: block; text-align: center; background: #2c3e50; color: white; padding: 15px; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px; transition: 0.2s; }
         .btn-qr:hover { background: #34495e; }
         .btn-qr.disabled { background: #95a5a6; pointer-events: none; }
-
         .list-card { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; }
         table { width: 100%; border-collapse: collapse; font-size: 15px; }
         th, td { padding: 15px; text-align: center; border-bottom: 1px solid #eee; }
@@ -25,30 +24,26 @@
         .status-waiting { color: #e67e22; font-weight: bold; }
         .status-called { color: #e74c3c; font-weight: bold; }
         .status-completed { color: #95a5a6; }
-
         .btn-action { padding: 8px 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; color: white; }
         .btn-call { background: #2ecc71; margin-right: 5px; }
         .btn-complete { background: #95a5a6; }
-
         @media (max-width: 600px) {
             th:nth-child(3), td:nth-child(3) { display: none; } /* 모바일에서 인원수 숨김 */
         }
     </style>
 </head>
 <body>
-
 <div class="container">
     <h1>📋 현장 웨이팅 통제 데스크</h1>
-
     <div class="top-card">
         <label>📍 현재 담당하고 있는 행사장을 선택하세요</label>
         <select id="team-selector" onchange="handleTeamChange()">
             <option value="">데이터를 불러오는 중...</option>
         </select>
         
-        <a href="#" id="qr-link" target="_blank" class="btn-qr disabled">📺 입구 고객용 QR 스크린 띄우기 (클릭)</a>
+        <!-- 💡 onclick 함수로 변경하여 토큰을 동적으로 생성합니다 -->
+        <a href="#" id="qr-link" onclick="openCustomerQR(); return false;" class="btn-qr disabled">📺 입구 고객용 QR 스크린 띄우기 (클릭)</a>
     </div>
-
     <div class="list-card">
         <table>
             <thead>
@@ -69,12 +64,13 @@
 
 <script>
     let refreshInterval;
+    let selectedTeamName = "";
 
     document.addEventListener('DOMContentLoaded', () => {
         loadTeams();
     });
 
-    // 1. 등록된 행사장 목록 불러오기 (직원 데이터 기준)
+    // 1. 등록된 행사장 목록 불러오기
     async function loadTeams() {
         try {
             const res = await fetch('/api/employees');
@@ -92,54 +88,58 @@
         } catch (e) { console.log("팀 로드 실패", e); }
     }
 
-    // 2. 행사장이 선택되었을 때 QR 링크 활성화 및 리스트 로드 시작
+    // 2. 행사장이 선택되었을 때 리스트 로드 시작
     function handleTeamChange() {
-        const teamName = document.getElementById('team-selector').value;
+        selectedTeamName = document.getElementById('team-selector').value;
         const qrLink = document.getElementById('qr-link');
         
         if (refreshInterval) clearInterval(refreshInterval);
-
-        if (!teamName) {
+        if (!selectedTeamName) {
             qrLink.classList.add('disabled');
-            qrLink.href = "#";
             document.getElementById('waitlist-tbody').innerHTML = '<tr><td colspan="5" style="padding:30px; color:#7f8c8d;">행사장을 선택하면 대기열이 표시됩니다.</td></tr>';
             return;
         }
 
-        // QR 화면 링크 세팅
-        qrLink.href = `${window.location.origin}/waiting/qr-display.html?team=${encodeURIComponent(teamName)}`;
+        // QR 링크 활성화
         qrLink.classList.remove('disabled');
 
-        // 리스트 최초 로드 및 5초마다 자동 갱신
+        // 리스트 로드 및 5초마다 갱신
         loadWaitlistData();
         refreshInterval = setInterval(loadWaitlistData, 5000);
     }
 
+    // 💡 [핵심 보안] 고객용 QR 창을 열 때 보안 토큰을 부여합니다.
+    function openCustomerQR() {
+        if (!selectedTeamName) return;
+
+        const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
+        const adminToken = Math.floor(nowKst.getTime() / 10000);
+        const fakeSig = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        
+        const displayUrl = `${window.location.origin}/waiting/qr-display.html?team=${encodeURIComponent(selectedTeamName)}&admin_token=${adminToken}&signature=${fakeSig}`;
+        
+        window.open(displayUrl, '_blank');
+    }
+
     // 3. 웨이팅 리스트 데이터 로드
     async function loadWaitlistData() {
-        const teamName = document.getElementById('team-selector').value;
-        if(!teamName) return;
-
+        if(!selectedTeamName) return;
         try {
-            const res = await fetch(`/api/admin/waitlist?teamName=${encodeURIComponent(teamName)}`);
+            const res = await fetch(`/api/admin/waitlist?teamName=${encodeURIComponent(selectedTeamName)}`);
             const list = await res.json();
             
             if (list.length === 0) {
                 document.getElementById('waitlist-tbody').innerHTML = '<tr><td colspan="5" style="padding:30px; color:#7f8c8d;">현재 대기열이 없습니다.</td></tr>';
                 return;
             }
-
             document.getElementById('waitlist-tbody').innerHTML = list.map(item => {
-                // 연락처 마스킹 처리 (예: 01012345678 -> 010-****-5678)
                 const maskedPhone = item.phone.length === 11 
                     ? `${item.phone.substring(0,3)}-****-${item.phone.substring(7,11)}` 
                     : item.phone;
-
                 let statusBadge = '';
                 if(item.status === 'waiting') statusBadge = '<span class="status-waiting">대기중</span>';
                 if(item.status === 'called') statusBadge = '<span class="status-called">호출됨</span>';
                 if(item.status === 'completed') statusBadge = '<span class="status-completed">입장완료</span>';
-
                 return `
                 <tr>
                     <td style="font-weight:bold; font-size:18px;">${item.waiting_number}</td>
