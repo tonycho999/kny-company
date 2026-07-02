@@ -8,15 +8,18 @@
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Noto Sans KR', sans-serif; color: #333; line-height: 1.6; background: #f8f9fa; }
+        body { font-family: 'Noto Sans KR', sans-serif; color: #333; line-height: 1.6; background: #f4f5f8; } /* 메인과 동일한 쿨톤 배경 */
         a { text-decoration: none; color: inherit; }
         
-        header { position: fixed; top: 0; left: 0; width: 100%; background-color: #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1000; display: flex; justify-content: space-between; align-items: center; padding: 15px 40px; }
-        .logo img { height: 40px; vertical-align: middle; border: none; }
+        /* ✨ 헤더 디자인 메인 페이지와 동일하게 통일 */
+        header { position: fixed; top: 0; left: 0; width: 100%; background-color: #3b428b; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 1000; display: flex; justify-content: space-between; align-items: center; padding: 15px 40px; color: #ffffff; }
+        .logo img { height: 80px; vertical-align: middle; border: none; }
         .nav-menu { display: flex; list-style: none; align-items: center; }
         .nav-menu li { margin-right: 30px; font-weight: 500; }
+        .nav-menu li a { color: #ffffff; transition: color 0.3s ease; }
+        .nav-menu li a:hover { color: #f1c40f; }
         
-        .container { max-width: 900px; margin: 120px auto 50px; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); min-height: 50vh; }
+        .container { max-width: 900px; margin: 150px auto 50px; background: white; padding: 50px 40px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); min-height: 50vh; }
         
         .post-title { font-size: 32px; color: #2c3e50; margin-bottom: 10px; font-weight: bold; border-bottom: 2px solid #ecf0f1; padding-bottom: 20px; }
         .post-date { font-size: 14px; color: #7f8c8d; text-align: right; margin-bottom: 30px; }
@@ -25,8 +28,9 @@
         .post-content { min-height: 300px; font-size: 16px; color: #444; }
         .post-content img { max-width: 100%; height: auto; display: block; margin: 20px auto; border-radius: 8px; }
         
-        .btn-back { display: inline-block; margin-top: 50px; padding: 12px 25px; background: #3498db; color: white; border-radius: 6px; font-weight: bold; text-align: center; }
-        .btn-back:hover { background: #2980b9; }
+        /* ✨ 목록 버튼 색상 통일 */
+        .btn-back { display: inline-block; margin-top: 50px; padding: 14px 30px; background: #3b428b; color: white; border-radius: 8px; font-weight: bold; text-align: center; transition: background-color 0.2s; }
+        .btn-back:hover { background: #2c3065; }
 
         .loading-msg { text-align: center; color: #7f8c8d; font-size: 18px; padding: 50px 0; }
     </style>
@@ -68,7 +72,6 @@
             }
 
             try {
-                // 전체 목록을 가져온 뒤 해당 ID의 데이터만 추출 (차후 상세조회용 백엔드 API를 추가하면 더 효율적입니다)
                 const res = await fetch('/api/portfolios');
                 const list = await res.json();
                 const portfolio = list.find(p => String(p.id) === id);
