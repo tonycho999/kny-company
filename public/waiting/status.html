@@ -17,22 +17,37 @@
         
         .remain-count { font-size: 64px; color: #e74c3c; font-weight: 900; display: inline-block; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .remain-count.pop { transform: scale(1.4); color: #2ecc71; }
+        
+        /* 💡 강력한 오디오 잠금 해제 유도 화면 */
         #safety-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(44, 62, 80, 0.95); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; cursor: pointer; text-align: center; }
-        #safety-overlay h3 { font-size: 22px; margin-bottom: 10px; }
+        #safety-overlay h3 { font-size: 24px; margin-bottom: 15px; color: #f1c40f; }
+        #safety-overlay p { font-size: 16px; line-height: 1.6; padding: 0 20px; }
+        #safety-overlay .btn-start { margin-top: 30px; padding: 15px 30px; background: #3498db; color: white; border: none; border-radius: 30px; font-size: 18px; font-weight: bold; animation: pulse 1.5s infinite; }
+        
         .hidden { display: none !important; }
         
         body.flash-green { background-color: #2ecc71; }
-        body.flash-red { background-color: #e74c3c; } /* 내 호출 시 빨간색 점멸 */
+        body.flash-red { background-color: #e74c3c; }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
     </style>
 </head>
 <body>
-<div id="safety-overlay" class="hidden" onclick="unlockOverlay()">
-    <h3>🔔 대기 현황 실시간 감지 중</h3>
-    <p>안내 멘트와 효과음을 정상 수신하려면 화면을 한 번 터치해주세요.</p>
+
+<!-- 💡 브라우저 오디오 정책을 뚫기 위한 최초 터치 필수 화면 -->
+<div id="safety-overlay" onclick="unlockAudio()">
+    <h3>🔔 소리 알림 켜기</h3>
+    <p>고객님의 차례가 되면 <b>음성 안내</b>가 나옵니다.<br>소리를 켜시려면 아래 버튼을 눌러주세요.</p>
+    <button class="btn-start">터치해서 시작하기</button>
 </div>
+
 <div class="wrapper">
     <button id="audioBtn" class="audio-toggle" onclick="toggleAudioMode()">
-        <span id="audioIcon">🔇</span> <span id="audioTxt">소리 알림 끔</span>
+        <span id="audioIcon">🔊</span> <span id="audioTxt">소리 켬</span>
     </button>
     <h2 id="teamName">📍 행사장 확인 중...</h2>
     <div class="my-number" id="myNum">내 번호: --번</div>
@@ -47,23 +62,20 @@
     const waitlistId = sessionStorage.getItem('waitlist_id');
     const teamName = sessionStorage.getItem('waitlist_team');
     
-    // 💡 상황별 오디오 파일 준비
+    // 오디오 객체 생성
     const audioProgress = new Audio('/sounds/wait_progress.mp3');
     const audioNext = new Audio('/sounds/wait_next.mp3');
     const audioCalled = new Audio('/sounds/wait_called.mp3');
     
     let lastRemain = null;
     let lastStatus = 'waiting';
-    let isAudioOn = false;
+    let isAudioOn = true; // 기본적으로 소리가 켜진 상태로 시작하게 유도
+    let isUnlocked = false; // 브라우저 잠금 해제 여부
 
     document.addEventListener('DOMContentLoaded', () => {
         if (!waitlistId || !teamName) {
             alert('잘못된 접근이거나 데이터가 만료되었습니다.');
             return;
-        }
-
-        if (localStorage.getItem('waiting_audio_preference') === 'on') {
-            document.getElementById('safety-overlay').classList.remove('hidden');
         }
         document.getElementById('teamName').innerText = `📍 ${decodeURIComponent(teamName)}`;
         fetchStatus();
@@ -73,6 +85,25 @@
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') fetchStatus();
     });
+
+    // 💡 [핵심] 사용자가 화면을 터치하는 순간 오디오 잠금을 해제합니다.
+    function unlockAudio() {
+        if(isUnlocked) return;
+        
+        // 브라우저 정책을 뚫기 위해 묵음(또는 잠깐 재생)으로 오디오 채널을 엽니다.
+        audioProgress.play().then(() => { audioProgress.pause(); audioProgress.currentTime = 0; }).catch(()=>{});
+        audioNext.play().then(() => { audioNext.pause(); audioNext.currentTime = 0; }).catch(()=>{});
+        audioCalled.play().then(() => { audioCalled.pause(); audioCalled.currentTime = 0; }).catch(()=>{});
+        
+        isUnlocked = true;
+        document.getElementById('safety-overlay').classList.add('hidden');
+        
+        // UI 반영
+        const btn = document.getElementById('audioBtn');
+        btn.classList.add('active');
+        document.getElementById('audioIcon').innerText = "🔊";
+        document.getElementById('audioTxt').innerText = "소리 켬";
+    }
 
     async function fetchStatus() {
         if (!waitlistId) return;
@@ -85,27 +116,28 @@
             const currentStatus = data.status;
             const countEl = document.getElementById('remainCount');
 
-            // 💡 1. 본인이 호출되었을 때 (최우선 순위)
+            // 1. 본인 호출 시
             if (currentStatus === 'called' && lastStatus !== 'called') {
                 document.body.classList.add('flash-red');
                 document.getElementById('statusMsg').innerHTML = "<b style='color:#e74c3c; font-size:20px;'>지금 즉시 입장해 주세요!</b>";
                 
-                if (isAudioOn) {
-                    audioCalled.play().catch(e => console.log('Audio block'));
+                if (isAudioOn && isUnlocked) {
+                    audioCalled.currentTime = 0;
+                    audioCalled.play().catch(e => console.log('Audio blocked', e));
                 }
             }
-            // 💡 2. 대기 인원이 줄어들었을 때 (호출 상태가 아닐 때만)
+            // 2. 대기 인원이 줄어들었을 때
             else if (currentStatus === 'waiting' && lastRemain !== null && currentRemain < lastRemain) {
                 countEl.classList.add('pop');
                 document.body.classList.add('flash-green');
                 
-                if (isAudioOn) {
+                if (isAudioOn && isUnlocked) {
                     if (currentRemain === 1) {
-                        // 내 앞에 딱 1팀 남았을 때 (다음 차례 멘트)
-                        audioNext.play().catch(e => console.log('Audio block'));
+                        audioNext.currentTime = 0;
+                        audioNext.play().catch(e => console.log('Audio blocked', e));
                     } else {
-                        // 단순히 순서가 당겨졌을 때
-                        audioProgress.play().catch(e => console.log('Audio block'));
+                        audioProgress.currentTime = 0;
+                        audioProgress.play().catch(e => console.log('Audio blocked', e));
                     }
                 }
                 
@@ -122,7 +154,6 @@
             if (currentStatus === 'completed') {
                 document.getElementById('statusMsg').innerText = "입장이 완료되었습니다.";
             }
-
         } catch (e) { console.log(e); }
     }
 
@@ -130,25 +161,17 @@
         const btn = document.getElementById('audioBtn');
         if (!isAudioOn) {
             isAudioOn = true;
-            localStorage.setItem('waiting_audio_preference', 'on');
             btn.classList.add('active');
             document.getElementById('audioIcon').innerText = "🔊";
-            document.getElementById('audioTxt').innerText = "소리 알림 켬";
-            
-            // 최초 터치 시 빈 소리라도 한 번 틀어주어 브라우저의 미디어 재생 제한을 풉니다.
-            audioProgress.play().then(() => { audioProgress.pause(); audioProgress.currentTime = 0; }).catch(e => {});
+            document.getElementById('audioTxt').innerText = "소리 켬";
+            // 켤 때 잠금 해제 시도
+            unlockAudio();
         } else {
             isAudioOn = false;
-            localStorage.setItem('waiting_audio_preference', 'off');
             btn.classList.remove('active');
             document.getElementById('audioIcon').innerText = "🔇";
-            document.getElementById('audioTxt').innerText = "소리 알림 끔";
+            document.getElementById('audioTxt').innerText = "소리 끔";
         }
-    }
-
-    function unlockOverlay() {
-        document.getElementById('safety-overlay').classList.add('hidden');
-        toggleAudioMode();
     }
 </script>
 </body>
