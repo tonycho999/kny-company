@@ -4,6 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KNY Company - 실시간 보안 QR</title>
+    
+    <script>
+        // 💡 [핵심 보안] 화면이 열리자마자 URL 토큰을 검사하여 복사충을 차단합니다.
+        const urlParamsSec = new URLSearchParams(window.location.search);
+        const adminToken = urlParamsSec.get('admin_token');
+        
+        // 토큰이 아예 없으면 즉시 차단 (단순 주소 복사본)
+        if (!adminToken) {
+            document.write('<h2 style="color:red; text-align:center; margin-top:50px;">🚫 접근 권한이 없습니다.<br><span style="font-size:14px; color:#7f8c8d;">통제 데스크를 통해서만 열 수 있습니다.</span></h2>');
+            window.stop(); // 페이지 렌더링 즉시 중단
+        }
+
+        // KST 기준 현재 시간 슬라이스 계산
+        const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
+        const currentSlice = Math.floor(nowKst.getTime() / 10000);
+        const tokenDiff = currentSlice - parseInt(adminToken);
+        
+        // 버튼을 누르고 창이 열린 지 5칸(약 50초)이 지난 후 이 URL로 다시 접속하면 만료 차단
+        if (isNaN(tokenDiff) || tokenDiff < 0 || tokenDiff > 5) { 
+            document.write('<h2 style="color:red; text-align:center; margin-top:50px;">🚫 보안 토큰이 만료되었습니다.<br><span style="font-size:14px; color:#7f8c8d;">통제 데스크에서 [스크린 띄우기]를 다시 눌러주세요.</span></h2>');
+            window.stop();
+        }
+    </script>
+
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; background-color: #2c3e50; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
         .qr-container { background: white; padding: 40px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); max-width: 450px; width: 100%; margin: 20px; }
@@ -51,10 +75,14 @@
         });
 
         function generateSecureQR() {
-            const timeSlice = Math.floor(Date.now() / 10000);
-            const targetUrl = `${window.location.origin}/waiting/register.html?team=${encodeURIComponent(teamName)}&token=${timeSlice}`;
+            // 이 토큰은 손님이 찍고 들어가는 토큰입니다 (KST 적용)
+            const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
+            const timeSlice = Math.floor(nowKst.getTime() / 10000);
+
+            // 손님 스캐너 URL 역시 가짜 서명을 붙여서 무섭게 만듭니다
+            const fakeSig = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            const targetUrl = `${window.location.origin}/waiting/register.html?auth_sig=${fakeSig}&team=${encodeURIComponent(teamName)}&token=${timeSlice}&secure_mode=active`;
             
-            // 💡 안정적인 QR 생성 전용 API(qrserver)로 교체 완료
             document.getElementById('qr-image').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(targetUrl)}`;
         }
     </script>
