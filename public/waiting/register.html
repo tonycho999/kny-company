@@ -10,12 +10,12 @@
         h1 { font-size: 24px; color: #2c3e50; text-align: center; margin-bottom: 5px; }
         .loc-name { text-align: center; color: #3498db; font-weight: bold; margin-bottom: 25px; font-size: 18px; }
         label { display: block; font-weight: bold; margin-bottom: 8px; color: #34495e; font-size: 14px; }
-        input[type="text"], input[type="number"] { width: 100%; padding: 14px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 14px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; text-align: center; }
         .chk-container { display: flex; align-items: center; gap: 10px; margin-bottom: 25px; background: #edf2f7; padding: 12px; border-radius: 8px; cursor: pointer; }
         button { width: 100%; padding: 16px; background-color: #3498db; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
         .error-screen { text-align: center; padding: 40px 20px; }
         .error-screen h2 { color: #e74c3c; font-size: 26px; margin-bottom: 15px; }
-        .hidden { display: none; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -34,7 +34,6 @@
                 <input type="checkbox" id="kakao" checked>
                 <span>카카오톡 알림톡 수신에 동의합니다.</span>
             </label>
-            <!-- 💡 버튼 클릭 시 로딩 상태를 표시하기 위해 ID 추가 -->
             <button type="submit" id="submitBtn">대기 등록하기</button>
         </form>
     </div>
@@ -51,7 +50,6 @@
     const teamName = urlParams.get('team');
     const scanToken = urlParams.get('token'); 
 
-    // 💡 접수 완료 음성 파일 준비
     const audioRegistered = new Audio('/sounds/wait_registered.mp3');
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -60,15 +58,17 @@
             return;
         }
 
-        window.history.replaceState({}, document.title, window.location.pathname);
-        
-        const currentSlice = Math.floor(Date.now() / 10000);
+        // 💡 [수정] 순수 KST 시간으로 비교. 에러 방지를 위해 5칸(약 50초)으로 넉넉하게 잡습니다.
+        const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
+        const currentSlice = Math.floor(nowKst.getTime() / 10000);
         const tokenDiff = currentSlice - parseInt(scanToken);
 
-        if (tokenDiff < 0 || tokenDiff > 2) { 
+        if (isNaN(tokenDiff) || tokenDiff < 0 || tokenDiff > 5) { 
+            console.log("만료 차이:", tokenDiff); // 디버깅용
             blockAccess();
             return;
         }
+        
         document.getElementById('team-title').innerText = `📍 ${decodeURIComponent(teamName)}`;
     });
 
@@ -101,15 +101,14 @@
             const result = await res.json();
             
             if(res.ok) {
-                // 💡 접수 완료 안내 멘트 재생 후 2.5초 뒤 페이지 이동
-                try { await audioRegistered.play(); } catch(err) { console.log('Audio Blocked'); }
+                try { await audioRegistered.play(); } catch(err) {}
                 
                 sessionStorage.setItem('waitlist_id', result.id);
                 sessionStorage.setItem('waitlist_team', teamName);
                 
                 setTimeout(() => {
                     window.location.href = `/waiting/status.html`;
-                }, 2500); // 멘트 길이에 맞춰 딜레이 시간 조절
+                }, 2500); 
             } else {
                 alert(`등록 실패: ${result.error}`);
                 btn.innerText = "대기 등록하기";
