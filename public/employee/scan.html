@@ -6,7 +6,6 @@
     <title>KNY Company - 출퇴근 등록 시스템</title>
     
     <script>
-        // 주소창을 지우지 않고 그대로 둡니다. (사용자가 원한 방식)
         const urlParams = new URLSearchParams(window.location.search);
         const incomingToken = urlParams.get('token');
         if (incomingToken) {
@@ -45,6 +44,7 @@
             <input type="text" id="employeeId" placeholder="사원번호를 입력하세요">
             <button class="button btn-blue" onclick="handleManualSubmit()">사원번호 인증하기</button>
         </div>
+
         <div id="choice-form" class="hidden">
             <span class="emp-name-tag" id="target-emp-name">○○○ 님</span>
             <p id="action-guide" style="color: #7f8c8d; font-size: 16px;">오늘 근무를 시작하시겠습니까?</p>
@@ -53,6 +53,7 @@
                 <button id="btn-clock-out" class="btn-out hidden" onclick="submitAttendance('out')">🌙 퇴근하기</button>
             </div>
         </div>
+
         <div id="status-area">
             <p class="message info" id="status-text">🔄 시스템에 안전하게 연결 중입니다...</p>
         </div>
@@ -69,10 +70,8 @@
             try {
                 let rawToken = null;
                 try { rawToken = sessionStorage.getItem('scan_token'); } catch(e) {}
+                if(!rawToken) rawToken = new URLSearchParams(window.location.search).get('token');
                 
-                if(!rawToken) {
-                    rawToken = new URLSearchParams(window.location.search).get('token');
-                }
                 if (!rawToken) {
                     showMsg('❌ 올바르지 않은 접근입니다. (QR 코드를 다시 스캔하세요.)', 'error');
                     return;
@@ -83,7 +82,6 @@
                 globalRealToken = parseInt(rawToken);
                 
                 const tokenDiff = currentSlice - globalRealToken;
-                
                 if (isNaN(tokenDiff) || tokenDiff < 0 || tokenDiff > 5) { 
                     showMsg('❌ 만료된 QR코드입니다. 입구의 최신 화면을 다시 스캔해주세요.', 'error');
                     return;
@@ -91,7 +89,6 @@
 
                 let savedId = null;
                 try { savedId = localStorage.getItem('savedEmployeeId'); } catch(e) { }
-
                 if (savedId) {
                     globalEmployeeId = savedId;
                     document.getElementById('reset-btn').classList.remove('hidden');
@@ -108,7 +105,6 @@
         async function handleManualSubmit() {
             const employeeId = document.getElementById('employeeId').value.trim();
             if (!employeeId) return alert('사원번호를 입력해주세요.');
-
             try { localStorage.setItem('savedEmployeeId', employeeId); } catch(e) { }
             
             globalEmployeeId = employeeId;
@@ -121,10 +117,11 @@
             showMsg('🔄 직원 및 근태 기록을 조회 중입니다...', 'info');
             try {
                 const resEmp = await fetch('/api/employees');
-                if (!resEmp.ok) throw new Error("API 연결 실패(직원조회)");
+                if (!resEmp.ok) throw new Error("API 연결 실패");
                 const employees = await resEmp.json();
                 
-                const currentEmp = employees.find(emp => emp.employee_id === employeeId);
+                // 💡 DB 스키마가 emp_id 로 되어있으므로 매칭 수정
+                const currentEmp = employees.find(emp => String(emp.emp_id) === String(employeeId));
                 
                 if (!currentEmp) {
                     showMsg('❌ 등록되지 않은 사원번호입니다. 사번을 재설정해 주세요.', 'error');
@@ -137,11 +134,10 @@
                 
                 todayClockIn = false;
                 todayClockOut = false;
-
                 if (resAtt.ok) {
                     const attendances = await resAtt.json();
                     if (Array.isArray(attendances)) {
-                        const myTodayRecord = attendances.find(att => String(att.employee_id) === String(employeeId));
+                        const myTodayRecord = attendances.find(att => String(att.emp_id) === String(employeeId));
                         if (myTodayRecord) {
                             if (myTodayRecord.clock_in && myTodayRecord.clock_in.trim() !== '') todayClockIn = true;
                             if (myTodayRecord.clock_out && myTodayRecord.clock_out.trim() !== '') todayClockOut = true;
@@ -167,7 +163,6 @@
                     showMsg('🎉 오늘 하루도 수고 많으셨습니다!\n(출퇴근 처리가 모두 완료된 상태입니다)', 'success');
                 }
             } catch (e) {
-                console.error("에러 원인:", e);
                 showMsg('❌ 서버 통신 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
             }
         }
@@ -175,14 +170,12 @@
         async function submitAttendance(type) {
             document.getElementById('choice-form').classList.add('hidden');
             showMsg('⏳ 출퇴근 기록을 전송하는 중입니다...', 'info');
-
             try {
                 const response = await fetch('/api/attendance', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ employeeId: globalEmployeeId, type, token: globalRealToken })
                 });
-
                 const result = await response.json();
                 
                 if (response.ok) {
@@ -190,12 +183,12 @@
                     const hours = String(nowKst.getHours()).padStart(2, '0');
                     const minutes = String(nowKst.getMinutes()).padStart(2, '0');
                     const typeText = type === 'in' ? '출근' : '퇴근';
-
+                    
                     try {
                         const audio = type === 'in' ? new Audio('/sounds/clock_in.mp3') : new Audio('/sounds/clock_out.mp3');
                         await audio.play();
                     } catch(e) { }
-
+                    
                     showMsg(`✅ ${result.name}님, ${hours}시 ${minutes}분에 ${typeText} 처리되었습니다.`, 'success');
                 } else {
                     showMsg(`❌ 처리 실패: ${result.error}`, 'error');
@@ -208,14 +201,11 @@
         function resetSavedId() {
             if (confirm('저장된 사원번호를 삭제하시겠습니까?\n(다음 스캔 시 사원번호를 다시 입력해야 합니다.)')) {
                 try { localStorage.removeItem('savedEmployeeId'); } catch(e) {}
-                
                 globalEmployeeId = "";
                 document.getElementById('employeeId').value = "";
-                
                 document.getElementById('status-area').classList.add('hidden');
                 document.getElementById('choice-form').classList.add('hidden');
                 document.getElementById('reset-btn').classList.add('hidden');
-                
                 document.getElementById('auth-form').classList.remove('hidden');
             }
         }
