@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KNY Company - 관리자 패널</title>
-    <!-- Quill 에디터 (포트폴리오 작성용) CSS -->
+    <!-- Quill 에디터 CSS -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; background-color: #f5f6fa; margin: 0; padding: 20px; }
@@ -18,10 +18,6 @@
         .panel { display: none; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
         .panel.active { display: block; }
         
-        /* 💡 직원 QR 스크린 오픈 버튼 스타일 */
-        .btn-qr-open { display: block; width: 100%; text-align: center; background: #2c3e50; color: white; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 18px; text-decoration: none; margin-bottom: 20px; transition: 0.2s; }
-        .btn-qr-open:hover { background: #1a252f; }
-
         .form-group { margin-bottom: 20px; }
         .form-group label { display: block; font-weight: bold; margin-bottom: 8px; }
         .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
@@ -46,9 +42,6 @@
 
     <!-- 1️⃣ 직원 및 근태 관리 패널 -->
     <div id="employee-panel" class="panel active">
-        <!-- 💡 QR 화면을 새 창으로 띄우는 버튼 -->
-        <a href="/admin-QR.html" target="_blank" class="btn-qr-open">📺 직원 출퇴근용 QR 스크린 띄우기 (새 창)</a>
-
         <div style="display: flex; gap: 20px;">
             <!-- 직원 등록 폼 -->
             <div style="flex: 1; background: #f8f9fa; padding: 20px; border-radius: 8px;">
@@ -124,7 +117,6 @@
 <!-- Quill 에디터 스크립트 -->
 <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 <script>
-    // Quill 에디터 초기화 (이미지 업로드 포함)
     const quill = new Quill('#editor-container', {
         theme: 'snow',
         modules: {
@@ -150,7 +142,6 @@
         loadPortfolios();
     });
 
-    // --- 직원 관리 함수 ---
     async function loadEmployees() {
         const res = await fetch('/api/employees');
         const data = await res.json();
@@ -196,7 +187,6 @@
         loadEmployees();
     }
 
-    // --- 포트폴리오 관리 함수 ---
     async function loadPortfolios() {
         const res = await fetch('/api/portfolios');
         const data = await res.json();
@@ -219,7 +209,6 @@
 
     async function savePortfolio() {
         const title = document.getElementById('pf-title').value;
-        // 에디터에 작성된 글과 사진을 HTML 소스코드 형태로 가져옴
         const content = quill.root.innerHTML;
 
         if (!title.trim() || content === '<p><br></p>') {
@@ -237,7 +226,7 @@
             if (res.ok) {
                 alert('포트폴리오가 저장되었습니다!');
                 document.getElementById('pf-title').value = '';
-                quill.root.innerHTML = ''; // 에디터 초기화
+                quill.root.innerHTML = ''; 
                 loadPortfolios();
             } else {
                 alert('저장 실패: ' + result.error);
