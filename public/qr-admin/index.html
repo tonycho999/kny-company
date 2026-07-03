@@ -11,8 +11,9 @@
         .sub-title { color: #7f8c8d; font-size: 16px; margin-bottom: 25px; font-weight: 500; }
         
         #qr-display-area { display: none; }
-        /* QR 이미지 크기를 명확히 지정하고 테두리를 줍니다 */
-        #qr-image { width: 250px; height: 250px; margin: 15px 0; border: 1px solid #eee; padding: 10px; border-radius: 12px; }
+        /* QR 이미지 컨테이너 (깜빡임 효과를 위해 감쌈) */
+        .img-container { min-height: 270px; display: flex; justify-content: center; align-items: center; }
+        #qr-image { width: 250px; height: 250px; margin: 10px 0; border: 1px solid #eee; padding: 10px; border-radius: 12px; transition: opacity 0.2s; }
         
         .btn-generate { background: #3498db; color: white; border: none; padding: 15px 30px; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.2s; width: 100%; margin-bottom: 20px; }
         .btn-generate:hover { background: #2980b9; }
@@ -34,10 +35,12 @@
         <button id="gen-btn" class="btn-generate" onclick="startQRSystem()">출퇴근 QR 화면에 띄우기</button>
         
         <div id="qr-display-area">
-            <!-- 디버깅용: 생성된 URL이 뭔지 작게 보여주는 영역 추가 -->
-            <p id="debug-url" style="font-size:10px; color:#bdc3c7; word-break: break-all; margin-bottom:5px;"></p>
+            <!-- 디버깅용: 생성된 URL 노출 -->
+            <p id="debug-url" style="font-size:10px; color:#bdc3c7; word-break: break-all; margin-bottom:5px; height: 30px;"></p>
             
-            <img id="qr-image" src="" alt="출퇴근 보안 QR코드">
+            <div class="img-container">
+                <img id="qr-image" src="" alt="출퇴근 보안 QR코드">
+            </div>
             
             <div class="timer-bar">
                 <div class="timer-fill" id="progress"></div>
@@ -54,9 +57,9 @@
             document.getElementById('gen-btn').style.display = 'none';
             document.getElementById('qr-display-area').style.display = 'block';
             
-            generateAdminQR(); // 1회 즉시 실행
+            generateAdminQR(); 
             
-            qrInterval = setInterval(generateAdminQR, 10000); // 10초 반복
+            qrInterval = setInterval(generateAdminQR, 10000); 
 
             const prog = document.getElementById('progress');
             prog.style.animation = 'countdown 10s linear infinite';
@@ -72,19 +75,29 @@
             const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
             const timeSlice = Math.floor(nowKst.getTime() / 10000); // 10초 단위 토큰
             
-            // 더 복잡하고 긴 가짜 서명 생성
             const fakeSig = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2) + "KNYSECURE";
             
-            // 💡 확실하게 쿼리 파라미터(? 뒤의 값)가 붙도록 문자열 조합을 단단히 묶음
-            // window.location.origin은 "https://kny-company.com" 과 같이 나옵니다.
+            // 💡 1. 직원이 찍을 엄청 긴 URL 생성
             const fullUrl = window.location.origin + "/attendance.html?auth_sig=" + fakeSig + "&token=" + timeSlice + "&mode=secure";
             
-            // 디버깅용 텍스트 (화면에 아주 작게 복잡한 URL이 제대로 생성되었는지 찍어줍니다)
-            document.getElementById('debug-url').innerText = fullUrl;
+            document.getElementById('debug-url').innerText = "현재 코드: " + timeSlice; // 화면에는 토큰 숫자만 깔끔하게 표시
             
-            // QR 코드 생성 API 호출
-            // 데이터를 URL-safe하게 감싸서(encodeURIComponent) API에 전달
-            document.getElementById('qr-image').src = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=" + encodeURIComponent(fullUrl);
+            // 💡 2. 브라우저 캐시를 무력화하는 무작위 난수(cb) 추가
+            const cacheBuster = new Date().getTime() + Math.random();
+            const qrApiUrl = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=" + encodeURIComponent(fullUrl) + "&cb=" + cacheBuster;
+
+            const qrImg = document.getElementById('qr-image');
+            
+            // 시각적으로 QR이 교체됨을 보여주기 위해 살짝 투명해졌다가 나타남
+            qrImg.style.opacity = '0.3';
+            
+            // 이미지 주소 강제 교체
+            qrImg.src = qrApiUrl;
+            
+            // 로딩이 완료되면 다시 진해짐
+            qrImg.onload = function() {
+                qrImg.style.opacity = '1';
+            }
         }
     </script>
 </body>
