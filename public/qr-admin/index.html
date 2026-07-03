@@ -10,6 +10,7 @@
         h1 { color: #2c3e50; font-size: 28px; margin-bottom: 5px; font-weight: bold; }
         .sub-title { color: #7f8c8d; font-size: 16px; margin-bottom: 25px; font-weight: 500; }
         
+        #qr-display-area { display: none; }
         .img-container { min-height: 270px; display: flex; justify-content: center; align-items: center; }
         #qr-image { width: 250px; height: 250px; margin: 10px 0; border: 1px solid #eee; padding: 10px; border-radius: 12px; transition: opacity 0.2s; }
         
@@ -26,16 +27,14 @@
 </head>
 <body>
 
-    <!-- 1. 처음 접속했을 때 보이는 버튼 화면 -->
     <div class="qr-wrapper" id="start-screen">
         <h1>직원 출퇴근 인증 데스크</h1>
         <div class="sub-title">현장 직원이 도착하면 아래 버튼을 눌러주세요</div>
         
-        <!-- 💡 버튼 클릭 시 새 창을 띄웁니다 -->
-        <button class="btn-generate" onclick="openSecureQRWindow()">QR 코드 새 창으로 열기</button>
+        <!-- 💡 버튼 클릭 시 현재 창의 주소창만 복잡하게 바꾸고 화면을 전환합니다 -->
+        <button class="btn-generate" onclick="startQRSystem()">QR 코드 화면 열기</button>
     </div>
 
-    <!-- 2. 새 창으로 떴을 때 보여지는 실제 QR 화면 (처음엔 숨김) -->
     <div class="qr-wrapper" id="qr-display-screen" style="display: none;">
         <h1>출퇴근 QR 스크린</h1>
         <div class="sub-title">스마트폰 기본 카메라로 스캔하세요</div>
@@ -53,35 +52,17 @@
     </div>
 
     <script>
-        // 💡 버튼을 눌렀을 때 복잡한 주소를 만들어 새 창(새 탭)을 띄우는 함수
-        function openSecureQRWindow() {
-            const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
-            const token = Math.floor(nowKst.getTime() / 10000);
-            const fakeSig = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
-            
-            // 현재 주소(admin-QR)에 매우 복잡한 파라미터를 붙여서 새 탭으로 엽니다.
-            const newWindowUrl = `${window.location.origin}/admin-QR/?secure_session=${fakeSig}&time_token=${token}&display_mode=active`;
-            
-            window.open(newWindowUrl, '_blank');
-        }
-
-        // 💡 페이지가 로드될 때, 이 화면이 "첫 화면"인지 "새 창(QR화면)"인지 파악합니다.
-        document.addEventListener('DOMContentLoaded', () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            // 주소창에 display_mode=active 라는 글자가 있다면, 이건 새 창으로 열린 QR 화면입니다.
-            if (urlParams.get('display_mode') === 'active') {
-                document.getElementById('start-screen').style.display = 'none';
-                document.getElementById('qr-display-screen').style.display = 'block';
-                
-                // QR 생성 및 10초 타이머 시작
-                startQRSystem();
-            }
-        });
-
-        // ----------------------------------------------------
-        // 아래는 새 창에서 QR을 10초마다 갱신하는 로직입니다.
-        // ----------------------------------------------------
         function startQRSystem() {
+            // 1. 화면 전환
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('qr-display-screen').style.display = 'block';
+            
+            // 2. 💡 브라우저 주소창 강제 조작 (새로고침 없이 주소만 엄청 복잡하게 덮어버림)
+            const fakeToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            const complexUrl = `/admin-QR/?session_key=${fakeSig}&auth_time=${Date.now()}&mode=secure_display`;
+            window.history.pushState({path: complexUrl}, '', complexUrl);
+            
+            // 3. QR 생성 및 타이머 시작
             generateAdminQR(); 
             setInterval(generateAdminQR, 10000); 
 
@@ -100,7 +81,6 @@
             const timeSlice = Math.floor(nowKst.getTime() / 10000); 
             const fakeSig = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2) + "KNYSECURE";
             
-            // 직원이 스마트폰으로 스캔했을 때 넘어갈 주소
             const fullUrl = window.location.origin + "/attendance.html?auth_sig=" + fakeSig + "&token=" + timeSlice + "&mode=secure";
             document.getElementById('debug-url').innerText = "코드 번호: " + timeSlice; 
             
