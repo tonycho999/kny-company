@@ -2,36 +2,271 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>KNY Company - 관리자 통합 대시보드</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KNY Company - 관리자 패널</title>
+    <!-- Quill 에디터 (포트폴리오 작성용) CSS -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background: #f1f2f6; overflow: hidden; }
-        .sidebar { width: 260px; background: #2c3e50; color: white; padding: 20px; display: flex; flex-direction: column; }
-        .sidebar h2 { text-align: center; margin-bottom: 30px; font-size: 20px; }
-        .menu-item { padding: 15px; margin-bottom: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; text-decoration: none; color: white; transition: 0.2s; }
-        .menu-item:hover, .menu-item.active { background: #34495e; color: #3498db; }
-        .main-content { flex: 1; display: flex; flex-direction: column; }
-        iframe { flex: 1; border: none; width: 100%; height: 100%; }
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f5f6fa; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 { color: #2c3e50; text-align: center; margin-bottom: 30px; }
+        
+        .tab-menu { display: flex; justify-content: center; margin-bottom: 30px; gap: 10px; }
+        .tab-btn { padding: 10px 20px; border: none; background: #ddd; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+        .tab-btn.active { background: #3498db; color: white; }
+        
+        .panel { display: none; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .panel.active { display: block; }
+        
+        /* 💡 직원 QR 스크린 오픈 버튼 스타일 */
+        .btn-qr-open { display: block; width: 100%; text-align: center; background: #2c3e50; color: white; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 18px; text-decoration: none; margin-bottom: 20px; transition: 0.2s; }
+        .btn-qr-open:hover { background: #1a252f; }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 8px; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+        
+        button.save-btn { background: #2ecc71; color: white; padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        button.delete-btn { background: #e74c3c; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+        th { background: #f8f9fa; }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <h2>KNY Admin Panel</h2>
-        <a href="portfolio.html" target="content-frame" class="menu-item active" onclick="setActive(this)">🖼️ 포트폴리오 관리</a>
-        <a href="employees.html" target="content-frame" class="menu-item" onclick="setActive(this)">👥 직원 명부 관리</a>
-        <a href="attendance.html" target="content-frame" class="menu-item" onclick="setActive(this)">⏰ 출퇴근 근태 현황</a>
-        <a href="qr-manager.html" target="content-frame" class="menu-item" onclick="setActive(this)">🔲 직원 출퇴근용 QR</a>
+
+<div class="container">
+    <h1>👨‍💼 KNY Company 관리자</h1>
+    
+    <div class="tab-menu">
+        <button class="tab-btn active" onclick="showPanel('employee-panel')">직원 및 근태 관리</button>
+        <button class="tab-btn" onclick="showPanel('portfolio-panel')">포트폴리오 관리</button>
     </div>
 
-    <div class="main-content">
-        <!-- 첫 로딩 시 포트폴리오 페이지를 띄움 -->
-        <iframe name="content-frame" src="portfolio.html"></iframe>
+    <!-- 1️⃣ 직원 및 근태 관리 패널 -->
+    <div id="employee-panel" class="panel active">
+        <!-- 💡 QR 화면을 새 창으로 띄우는 버튼 -->
+        <a href="/admin-QR.html" target="_blank" class="btn-qr-open">📺 직원 출퇴근용 QR 스크린 띄우기 (새 창)</a>
+
+        <div style="display: flex; gap: 20px;">
+            <!-- 직원 등록 폼 -->
+            <div style="flex: 1; background: #f8f9fa; padding: 20px; border-radius: 8px;">
+                <h3>직원 등록</h3>
+                <div class="form-group">
+                    <label>이름</label>
+                    <input type="text" id="emp-name" placeholder="홍길동">
+                </div>
+                <div class="form-group">
+                    <label>전화번호</label>
+                    <input type="text" id="emp-phone" placeholder="01012345678">
+                </div>
+                <div class="form-group">
+                    <label>배정 행사장 (근무지)</label>
+                    <input type="text" id="emp-team" placeholder="과천A">
+                </div>
+                <button class="save-btn" onclick="addEmployee()">직원 등록</button>
+            </div>
+            
+            <!-- 직원 목록 -->
+            <div style="flex: 2;">
+                <h3>직원 목록 및 당일 출퇴근 현황</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>이름</th>
+                            <th>전화번호</th>
+                            <th>근무지</th>
+                            <th>출근시간</th>
+                            <th>퇴근시간</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="emp-tbody">
+                        <tr><td colspan="6">로딩 중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-    <script>
-        function setActive(element) {
-            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
-            element.classList.add('active');
+    <!-- 2️⃣ 포트폴리오 관리 패널 -->
+    <div id="portfolio-panel" class="panel">
+        <h3>새 포트폴리오 등록</h3>
+        <div class="form-group">
+            <label>제목</label>
+            <input type="text" id="pf-title" placeholder="2026 서울 물놀이 축제">
+        </div>
+        <div class="form-group">
+            <label>본문 내용 (사진/텍스트)</label>
+            <div id="editor-container" style="height: 300px; background: white;"></div>
+        </div>
+        <button class="save-btn" onclick="savePortfolio()">포트폴리오 저장</button>
+
+        <h3 style="margin-top: 40px;">등록된 포트폴리오 목록</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>제목</th>
+                    <th>등록일</th>
+                    <th>관리</th>
+                </tr>
+            </thead>
+            <tbody id="pf-tbody">
+                <tr><td colspan="4">로딩 중...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- Quill 에디터 스크립트 -->
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+<script>
+    // Quill 에디터 초기화 (이미지 업로드 포함)
+    const quill = new Quill('#editor-container', {
+        theme: 'snow',
+        modules: {
+            toolbar: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'align': [] }],
+                ['image', 'link']
+            ]
         }
-    </script>
+    });
+
+    function showPanel(panelId) {
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(panelId).classList.add('active');
+        event.target.classList.add('active');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadEmployees();
+        loadPortfolios();
+    });
+
+    // --- 직원 관리 함수 ---
+    async function loadEmployees() {
+        const res = await fetch('/api/employees');
+        const data = await res.json();
+        const tbody = document.getElementById('emp-tbody');
+        tbody.innerHTML = data.map(emp => `
+            <tr>
+                <td>${emp.name}</td>
+                <td>${emp.phone}</td>
+                <td>${emp.team_name}</td>
+                <td>${emp.check_in_time ? new Date(emp.check_in_time).toLocaleTimeString('ko-KR') : '-'}</td>
+                <td>${emp.check_out_time ? new Date(emp.check_out_time).toLocaleTimeString('ko-KR') : '-'}</td>
+                <td><button class="delete-btn" onclick="deleteEmployee(${emp.id})">삭제</button></td>
+            </tr>
+        `).join('');
+    }
+
+    async function addEmployee() {
+        const name = document.getElementById('emp-name').value;
+        const phone = document.getElementById('emp-phone').value;
+        const team_name = document.getElementById('emp-team').value;
+
+        if(!name || !phone || !team_name) return alert('모든 항목을 입력해주세요.');
+
+        await fetch('/api/employees', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, phone, team_name })
+        });
+        alert('등록되었습니다.');
+        document.getElementById('emp-name').value = '';
+        document.getElementById('emp-phone').value = '';
+        document.getElementById('emp-team').value = '';
+        loadEmployees();
+    }
+
+    async function deleteEmployee(id) {
+        if(!confirm('정말 삭제하시겠습니까?')) return;
+        await fetch('/api/employees', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        });
+        loadEmployees();
+    }
+
+    // --- 포트폴리오 관리 함수 ---
+    async function loadPortfolios() {
+        const res = await fetch('/api/portfolios');
+        const data = await res.json();
+        const tbody = document.getElementById('pf-tbody');
+        
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4">등록된 포트폴리오가 없습니다.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.map(item => `
+            <tr>
+                <td>${item.id}</td>
+                <td>${item.title}</td>
+                <td>${new Date(item.created_at).toLocaleDateString('ko-KR')}</td>
+                <td><button class="delete-btn" onclick="deletePortfolio(${item.id})">삭제</button></td>
+            </tr>
+        `).join('');
+    }
+
+    async function savePortfolio() {
+        const title = document.getElementById('pf-title').value;
+        // 에디터에 작성된 글과 사진을 HTML 소스코드 형태로 가져옴
+        const content = quill.root.innerHTML;
+
+        if (!title.trim() || content === '<p><br></p>') {
+            return alert('제목과 본문을 모두 작성해주세요.');
+        }
+
+        try {
+            const res = await fetch('/api/portfolios', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, content })
+            });
+
+            const result = await res.json();
+            if (res.ok) {
+                alert('포트폴리오가 저장되었습니다!');
+                document.getElementById('pf-title').value = '';
+                quill.root.innerHTML = ''; // 에디터 초기화
+                loadPortfolios();
+            } else {
+                alert('저장 실패: ' + result.error);
+            }
+        } catch (e) {
+            alert('서버 통신 오류가 발생했습니다.');
+        }
+    }
+
+    async function deletePortfolio(id) {
+        if(!confirm('이 포트폴리오를 삭제하시겠습니까? 복구할 수 없습니다.')) return;
+        
+        try {
+            const res = await fetch('/api/portfolios', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            
+            if (res.ok) {
+                alert('삭제되었습니다.');
+                loadPortfolios();
+            } else {
+                alert('삭제 실패');
+            }
+        } catch(e) {
+            alert('서버 통신 오류');
+        }
+    }
+</script>
 </body>
 </html>
