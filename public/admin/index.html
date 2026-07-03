@@ -214,8 +214,9 @@
         const filtered = allEmployees.filter(emp => {
             let dateMatch = true;
             if (dateVal && emp.check_in_time) {
-                // 🛠️ 시간 오차 방지: 검색 시 정확하게 한국 시간을 추출하여 날짜(YYYY-MM-DD) 매칭
-                const checkInDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(emp.check_in_time));
+                // 🛠️ 시간 누적으로 인해 쉼표가 있을 수 있으므로 첫 번째 날짜 기준(split)으로 검색
+                const firstCheckIn = emp.check_in_time.split(',')[0].trim();
+                const checkInDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(firstCheckIn));
                 dateMatch = (checkInDate === dateVal);
             } else if (dateVal && !emp.check_in_time) { 
                 dateMatch = false; 
@@ -227,6 +228,16 @@
             return dateMatch && teamMatch && keywordMatch;
         });
         renderAttendanceTable(filtered);
+    }
+
+    // 🛠️ 여러 개의 시간이 들어와도 에러 없이 한국 시간으로 깔끔하게 변환해 주는 헬퍼 함수
+    function formatMultiTimes(timeStr) {
+        if (!timeStr) return '미출근';
+        const times = timeStr.split(',');
+        return times.map(t => {
+            try { return new Date(t.trim()).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute:'2-digit' }); }
+            catch(e) { return '-'; }
+        }).join(', '); // 쉼표와 띄어쓰기로 예쁘게 구분
     }
 
     function resetEmpSearch() {
@@ -267,8 +278,8 @@
                 <td style="font-weight:bold;">${emp.emp_id || '-'}</td>
                 <td>${emp.name}</td>
                 <td>${emp.team_name}</td>
-                <td style="color:#2ecc71; font-weight:bold;">${emp.check_in_time ? new Date(emp.check_in_time).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '미출근'}</td>
-                <td style="color:#e74c3c;">${emp.check_out_time ? new Date(emp.check_out_time).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '-'}</td>
+                <td style="color:#2ecc71; font-weight:bold;">${formatMultiTimes(emp.check_in_time)}</td>
+                <td style="color:#e74c3c; font-weight:bold;">${emp.check_out_time ? formatMultiTimes(emp.check_out_time) : '-'}</td>
             </tr>
         `).join('');
     }
