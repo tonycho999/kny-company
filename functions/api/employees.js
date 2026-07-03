@@ -38,7 +38,6 @@ export async function onRequestPut(context) {
 
         if (!id) throw new Error("ID가 필요합니다.");
 
-        // id를 숫자로 변환
         const numId = parseInt(id, 10);
 
         await context.env.DB.prepare(
@@ -58,16 +57,24 @@ export async function onRequestPut(context) {
     }
 }
 
+// 💡 [핵심] 직원을 삭제할 때, 관련 기록을 먼저 지우고 직원을 삭제합니다.
 export async function onRequestDelete(context) {
     try {
         const url = new URL(context.request.url);
         const idParam = url.searchParams.get("id");
         
         if (!idParam) throw new Error("삭제할 ID가 전달되지 않았습니다.");
-
-        // 💡 문자로 넘어온 ID를 데이터베이스 형식에 맞게 '숫자(Integer)'로 강제 변환합니다.
         const numId = parseInt(idParam, 10);
 
+        // 1. 해당 직원의 사원번호(emp_id)를 먼저 알아냅니다.
+        const emp = await context.env.DB.prepare("SELECT emp_id FROM employees WHERE id = ?").bind(numId).first();
+
+        // 2. 관련 출퇴근 기록이 있다면 에러가 나지 않게 먼저 삭제해 줍니다.
+        if (emp && emp.emp_id) {
+            try { await context.env.DB.prepare("DELETE FROM Attendance WHERE emp_id = ?").bind(emp.emp_id).run(); } catch(e) {}
+        }
+
+        // 3. 마지막으로 직원을 완벽하게 삭제합니다.
         await context.env.DB.prepare("DELETE FROM employees WHERE id = ?").bind(numId).run();
         
         return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } });
