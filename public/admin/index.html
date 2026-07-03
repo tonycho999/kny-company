@@ -201,7 +201,7 @@
         editingEmployeeId = id;
         
         const submitBtn = document.getElementById('btn-emp-submit');
-        submitBtn.innerText = '완료'; // 💡 요청하신 대로 텍스트를 짧게 수정했습니다!
+        submitBtn.innerText = '완료';
         submitBtn.style.backgroundColor = '#f39c12';
         document.getElementById('btn-emp-cancel').style.display = 'inline-block';
         
@@ -256,7 +256,7 @@
         } catch(e) { alert('서버 통신 오류'); }
     }
 
-    // 💡 [수정됨] URL 뒤에 파라미터로 명확하게 ID를 던져줍니다.
+    // 💡 에러 발생 시 상세 사유 출력하도록 수정
     async function deleteEmployee(id) {
         if(!confirm('이 직원의 정보를 완전히 삭제하시겠습니까?')) return;
         try {
@@ -267,7 +267,8 @@
                 alert('삭제되었습니다.');
                 loadEmployees();
             } else {
-                alert('삭제에 실패했습니다.');
+                const errData = await res.json();
+                alert(`삭제에 실패했습니다. 사유: ${errData.error || '알 수 없음'}`);
             }
         } catch (e) {
             alert('서버 통신 오류');
