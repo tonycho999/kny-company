@@ -48,24 +48,36 @@ export async function onRequest(context) {
             const record = await env.DB.prepare("SELECT * FROM Attendance WHERE emp_id = ? AND date = ?").bind(employeeId, targetDate).first();
 
             if (type === 'in') {
-                // 🛠️ 수정됨: 이미 출근/퇴근 기록이 있어도 에러를 내지 않고 '재출근'으로 덮어씌웁니다. (퇴근 기록은 초기화)
+                let newClockIn = currentTime;
+                if (record && record.clock_in) newClockIn = record.clock_in + ', ' + currentTime;
+
                 if (record) {
-                    await env.DB.prepare("UPDATE Attendance SET clock_in = ?, clock_out = NULL WHERE emp_id = ? AND date = ?").bind(currentTime, employeeId, targetDate).run();
+                    await env.DB.prepare("UPDATE Attendance SET clock_in = ? WHERE emp_id = ? AND date = ?").bind(newClockIn, employeeId, targetDate).run();
                 } else {
-                    await env.DB.prepare("INSERT INTO Attendance (emp_id, date, clock_in) VALUES (?, ?, ?)").bind(employeeId, targetDate, currentTime).run();
+                    await env.DB.prepare("INSERT INTO Attendance (emp_id, date, clock_in) VALUES (?, ?, ?)").bind(employeeId, targetDate, newClockIn).run();
                 }
+
+                const empRec = await env.DB.prepare("SELECT check_in_time FROM employees WHERE emp_id = ?").bind(employeeId).first();
+                let newCheckInTime = now.toISOString();
+                if (empRec && empRec.check_in_time) newCheckInTime = empRec.check_in_time + ', ' + now.toISOString();
                 
-                await env.DB.prepare("UPDATE employees SET check_in_time = ?, check_out_time = NULL WHERE emp_id = ?").bind(now.toISOString(), employeeId).run();
+                await env.DB.prepare("UPDATE employees SET check_in_time = ? WHERE emp_id = ?").bind(newCheckInTime, employeeId).run();
 
             } else if (type === 'out') {
-                if (record && record.clock_out) return Response.json({ error: "이미 퇴근 처리되었습니다." }, { status: 400 });
+                let newClockOut = currentTime;
+                if (record && record.clock_out) newClockOut = record.clock_out + ', ' + currentTime;
+
                 if (record) {
-                    await env.DB.prepare("UPDATE Attendance SET clock_out = ? WHERE emp_id = ? AND date = ?").bind(currentTime, employeeId, targetDate).run();
+                    await env.DB.prepare("UPDATE Attendance SET clock_out = ? WHERE emp_id = ? AND date = ?").bind(newClockOut, employeeId, targetDate).run();
                 } else {
-                    await env.DB.prepare("INSERT INTO Attendance (emp_id, date, clock_out) VALUES (?, ?, ?)").bind(employeeId, targetDate, currentTime).run();
+                    await env.DB.prepare("INSERT INTO Attendance (emp_id, date, clock_out) VALUES (?, ?, ?)").bind(employeeId, targetDate, newClockOut).run();
                 }
-                
-                await env.DB.prepare("UPDATE employees SET check_out_time = ? WHERE emp_id = ?").bind(now.toISOString(), employeeId).run();
+
+                const empRec = await env.DB.prepare("SELECT check_out_time FROM employees WHERE emp_id = ?").bind(employeeId).first();
+                let newCheckOutTime = now.toISOString();
+                if (empRec && empRec.check_out_time) newCheckOutTime = empRec.check_out_time + ', ' + now.toISOString();
+
+                await env.DB.prepare("UPDATE employees SET check_out_time = ? WHERE emp_id = ?").bind(newCheckOutTime, employeeId).run();
             }
 
             return Response.json({ success: true, name: emp.name });
