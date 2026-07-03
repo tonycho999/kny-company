@@ -120,7 +120,6 @@
                 if (!resEmp.ok) throw new Error("API 연결 실패");
                 const employees = await resEmp.json();
                 
-                // 💡 DB 스키마가 emp_id 로 되어있으므로 매칭 수정
                 const currentEmp = employees.find(emp => String(emp.emp_id) === String(employeeId));
                 
                 if (!currentEmp) {
@@ -152,15 +151,19 @@
                 document.getElementById('btn-clock-in').classList.add('hidden');
                 document.getElementById('btn-clock-out').classList.add('hidden');
 
+                // 💡 출퇴근 버튼 로직 수정 (재출근 가능하도록)
                 if (!todayClockIn) {
                     document.getElementById('action-guide').innerText = '☀️ 오늘 근무를 시작하시겠습니까?';
                     document.getElementById('btn-clock-in').classList.remove('hidden');
+                    document.getElementById('btn-clock-in').innerText = '☀️ 출근하기';
                 } else if (todayClockIn && !todayClockOut) {
                     document.getElementById('action-guide').innerText = '🌙 오늘 근무를 마치고 퇴근하시겠습니까?';
                     document.getElementById('btn-clock-out').classList.remove('hidden');
                 } else {
-                    document.getElementById('choice-form').classList.add('hidden');
-                    showMsg('🎉 오늘 하루도 수고 많으셨습니다!\n(출퇴근 처리가 모두 완료된 상태입니다)', 'success');
+                    // 퇴근을 한 상태라도 다시 출근할 수 있게 버튼 활성화
+                    document.getElementById('action-guide').innerText = '🔄 퇴근 처리가 완료된 상태입니다. 다시 출근하시겠습니까?';
+                    document.getElementById('btn-clock-in').classList.remove('hidden');
+                    document.getElementById('btn-clock-in').innerText = '☀️ 다시 출근하기';
                 }
             } catch (e) {
                 showMsg('❌ 서버 통신 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
