@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KNY Company - 출퇴근 등록 시스템</title>
-    
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const incomingToken = urlParams.get('token');
@@ -30,7 +29,6 @@
         .success { color: #2ecc71; }
         .error { color: #e74c3c; }
         .info { color: #7f8c8d; }
-        .warning { color: #f39c12; }
         .hidden { display: none !important; }
         .reset-link { margin-top: 30px; display: inline-block; color: #b2bec3; font-size: 13px; text-decoration: underline; cursor: pointer; }
     </style>
@@ -63,8 +61,6 @@
     <script>
         let globalEmployeeId = ""; 
         let globalRealToken = null; 
-        let todayClockIn = false;
-        let todayClockOut = false;
 
         document.addEventListener('DOMContentLoaded', async () => {
             try {
@@ -97,9 +93,7 @@
                     document.getElementById('status-area').classList.add('hidden');
                     document.getElementById('auth-form').classList.remove('hidden');
                 }
-            } catch (err) {
-                showMsg('❌ 시스템 초기화 중 알 수 없는 오류가 발생했습니다.', 'error');
-            }
+            } catch (err) { showMsg('❌ 오류가 발생했습니다.', 'error'); }
         });
 
         async function handleManualSubmit() {
@@ -114,16 +108,14 @@
         }
 
         async function openChoiceForm(employeeId) {
-            showMsg('🔄 직원 및 근태 기록을 조회 중입니다...', 'info');
+            showMsg('🔄 기록을 조회 중입니다...', 'info');
             try {
                 const resEmp = await fetch('/api/employees');
-                if (!resEmp.ok) throw new Error("API 연결 실패");
                 const employees = await resEmp.json();
-                
                 const currentEmp = employees.find(emp => String(emp.emp_id) === String(employeeId));
                 
                 if (!currentEmp) {
-                    showMsg('❌ 등록되지 않은 사원번호입니다. 사번을 재설정해 주세요.', 'error');
+                    showMsg('❌ 등록되지 않은 사원번호입니다.', 'error');
                     try { localStorage.removeItem('savedEmployeeId'); } catch(e) {}
                     return;
                 }
@@ -131,15 +123,16 @@
                 const todayKst = new Date(Date.now() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
                 const resAtt = await fetch(`/api/attendance?date=${todayKst}`);
                 
-                todayClockIn = false;
-                todayClockOut = false;
+                let inCount = 0;
+                let outCount = 0;
+
                 if (resAtt.ok) {
                     const attendances = await resAtt.json();
                     if (Array.isArray(attendances)) {
                         const myTodayRecord = attendances.find(att => String(att.emp_id) === String(employeeId));
                         if (myTodayRecord) {
-                            if (myTodayRecord.clock_in && myTodayRecord.clock_in.trim() !== '') todayClockIn = true;
-                            if (myTodayRecord.clock_out && myTodayRecord.clock_out.trim() !== '') todayClockOut = true;
+                            if (myTodayRecord.clock_in) inCount = myTodayRecord.clock_in.split(',').length;
+                            if (myTodayRecord.clock_out) outCount = myTodayRecord.clock_out.split(',').length;
                         }
                     }
                 }
@@ -151,28 +144,24 @@
                 document.getElementById('btn-clock-in').classList.add('hidden');
                 document.getElementById('btn-clock-out').classList.add('hidden');
 
-                // 💡 출퇴근 버튼 로직 수정 (재출근 가능하도록)
-                if (!todayClockIn) {
+                if (inCount > outCount) {
+                    document.getElementById('action-guide').innerText = '🌙 오늘 근무를 마치고 퇴근하시겠습니까?';
+                    document.getElementById('btn-clock-out').classList.remove('hidden');
+                } else if (inCount === outCount && inCount > 0) {
+                    document.getElementById('action-guide').innerText = '🔄 퇴근 처리가 완료되었습니다. 다시 출근하시겠습니까?';
+                    document.getElementById('btn-clock-in').classList.remove('hidden');
+                    document.getElementById('btn-clock-in').innerText = '☀️ 다시 출근하기';
+                } else {
                     document.getElementById('action-guide').innerText = '☀️ 오늘 근무를 시작하시겠습니까?';
                     document.getElementById('btn-clock-in').classList.remove('hidden');
                     document.getElementById('btn-clock-in').innerText = '☀️ 출근하기';
-                } else if (todayClockIn && !todayClockOut) {
-                    document.getElementById('action-guide').innerText = '🌙 오늘 근무를 마치고 퇴근하시겠습니까?';
-                    document.getElementById('btn-clock-out').classList.remove('hidden');
-                } else {
-                    // 퇴근을 한 상태라도 다시 출근할 수 있게 버튼 활성화
-                    document.getElementById('action-guide').innerText = '🔄 퇴근 처리가 완료된 상태입니다. 다시 출근하시겠습니까?';
-                    document.getElementById('btn-clock-in').classList.remove('hidden');
-                    document.getElementById('btn-clock-in').innerText = '☀️ 다시 출근하기';
                 }
-            } catch (e) {
-                showMsg('❌ 서버 통신 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
-            }
+            } catch (e) { showMsg('❌ 통신 오류', 'error'); }
         }
 
         async function submitAttendance(type) {
             document.getElementById('choice-form').classList.add('hidden');
-            showMsg('⏳ 출퇴근 기록을 전송하는 중입니다...', 'info');
+            showMsg('⏳ 출퇴근 기록 전송 중...', 'info');
             try {
                 const response = await fetch('/api/attendance', {
                     method: 'POST',
@@ -186,30 +175,21 @@
                     const hours = String(nowKst.getHours()).padStart(2, '0');
                     const minutes = String(nowKst.getMinutes()).padStart(2, '0');
                     const typeText = type === 'in' ? '출근' : '퇴근';
-                    
                     try {
                         const audio = type === 'in' ? new Audio('/sounds/clock_in.mp3') : new Audio('/sounds/clock_out.mp3');
                         await audio.play();
                     } catch(e) { }
-                    
                     showMsg(`✅ ${result.name}님, ${hours}시 ${minutes}분에 ${typeText} 처리되었습니다.`, 'success');
                 } else {
                     showMsg(`❌ 처리 실패: ${result.error}`, 'error');
                 }
-            } catch (error) {
-                showMsg('❌ 서버 전송 오류가 발생했습니다.', 'error');
-            }
+            } catch (error) { showMsg('❌ 서버 전송 오류', 'error'); }
         }
 
         function resetSavedId() {
-            if (confirm('저장된 사원번호를 삭제하시겠습니까?\n(다음 스캔 시 사원번호를 다시 입력해야 합니다.)')) {
+            if (confirm('저장된 사원번호를 삭제하시겠습니까?')) {
                 try { localStorage.removeItem('savedEmployeeId'); } catch(e) {}
-                globalEmployeeId = "";
-                document.getElementById('employeeId').value = "";
-                document.getElementById('status-area').classList.add('hidden');
-                document.getElementById('choice-form').classList.add('hidden');
-                document.getElementById('reset-btn').classList.add('hidden');
-                document.getElementById('auth-form').classList.remove('hidden');
+                window.location.reload();
             }
         }
 
