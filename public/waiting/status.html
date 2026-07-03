@@ -11,37 +11,32 @@
         .audio-toggle { position: absolute; top: 15px; right: 15px; background: #e2e8f0; border: none; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; }
         .audio-toggle.active { background: #3498db; color: white; }
         h2 { color: #7f8c8d; font-size: 18px; margin-top: 15px; }
-        .my-number { font-size: 48px; color: #2c3e50; font-weight: 900; margin: 10px 0; }
+        .my-number { font-size: 38px; color: #2c3e50; font-weight: 900; margin: 10px 0; }
         
         .status-card { background: #edf2f7; border-radius: 16px; padding: 25px; margin: 20px 0; }
+        .status-title { font-size: 16px; font-weight: bold; color: #4a5568; }
         
         .remain-count { font-size: 64px; color: #e74c3c; font-weight: 900; display: inline-block; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .remain-count.pop { transform: scale(1.4); color: #2ecc71; }
         
-        /* 💡 강력한 오디오 잠금 해제 유도 화면 */
         #safety-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(44, 62, 80, 0.95); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; cursor: pointer; text-align: center; }
         #safety-overlay h3 { font-size: 24px; margin-bottom: 15px; color: #f1c40f; }
         #safety-overlay p { font-size: 16px; line-height: 1.6; padding: 0 20px; }
         #safety-overlay .btn-start { margin-top: 30px; padding: 15px 30px; background: #3498db; color: white; border: none; border-radius: 30px; font-size: 18px; font-weight: bold; animation: pulse 1.5s infinite; }
         
         .hidden { display: none !important; }
-        
         body.flash-green { background-color: #2ecc71; }
         body.flash-red { background-color: #e74c3c; }
         
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
 
 <div id="safety-overlay" onclick="unlockAudio()">
-    <h3>🔔 소리 알림 켜기</h3>
-    <p>고객님의 차례가 되면 <b>음성 안내</b>가 나옵니다.<br>소리를 켜시려면 아래 버튼을 눌러주세요.</p>
-    <button class="btn-start">터치해서 시작하기</button>
+    <h3 id="txt-overlay-title">🔔 소리 알림 켜기</h3>
+    <p id="txt-overlay-desc">고객님의 차례가 되면 <b>음성 안내</b>가 나옵니다.<br>소리를 켜시려면 아래 버튼을 눌러주세요.</p>
+    <button class="btn-start" id="txt-overlay-btn">터치해서 시작하기</button>
 </div>
 
 <div class="wrapper">
@@ -50,23 +45,37 @@
     </button>
     <h2 id="teamName">📍 행사장 확인 중...</h2>
     <div class="my-number" id="myNum">내 번호: --번</div>
+
     <div class="status-card">
-        <p style="font-size: 16px; font-weight: bold; color: #4a5568;">내 앞 대기 팀수</p>
+        <p class="status-title" id="txt-ahead">내 앞 대기 팀수</p>
         <div class="remain-count" id="remainCount">--</div>
         <p style="margin-top: 10px; color:#7f8c8d; font-size:14px;" id="statusMsg">순서를 실시간으로 계산하고 있습니다.</p>
     </div>
 </div>
 
 <script>
+    const i18n = {
+        ko: { title: "KNY Company - 대기 현황", overlayTitle: "🔔 소리 알림 켜기", overlayDesc: "고객님의 차례가 되면 <b>음성 안내</b>가 나옵니다.<br>소리를 켜시려면 아래 버튼을 눌러주세요.", overlayBtn: "터치해서 시작하기", sndOn: "소리 켬", sndOff: "소리 끔", locLoad: "📍 행사장 확인 중...", myNum: "내 번호: ", ahead: "내 앞 대기 팀수", calc: "순서를 실시간으로 계산하고 있습니다.", call: "<b style='color:#e74c3c; font-size:20px;'>지금 즉시 입장해 주세요!</b>", done: "입장이 완료되었습니다.", alertErr: "잘못된 접근이거나 데이터가 만료되었습니다." },
+        en: { title: "KNY Company - Waiting Status", overlayTitle: "🔔 Turn on sound alerts", overlayDesc: "You will receive an <b>audio alert</b> when it's your turn.<br>Please tap the button below to turn on the sound.", overlayBtn: "Tap to Start", sndOn: "Sound On", sndOff: "Sound Off", locLoad: "📍 Checking location...", myNum: "My Number: ", ahead: "Teams ahead of me", calc: "Calculating in real-time...", call: "<b style='color:#e74c3c; font-size:20px;'>Please enter immediately!</b>", done: "Entry completed.", alertErr: "Invalid access or data expired." },
+        ja: { title: "KNY Company - 待機状況", overlayTitle: "🔔 音声通知をオンにする", overlayDesc: "順番が来ると<b>音声でお知らせ</b>します。<br>下のボタンをタップして音声をオンにしてください。", overlayBtn: "タップして開始", sndOn: "音声オン", sndOff: "音声オフ", locLoad: "📍 会場を確認中...", myNum: "あなたの番号: ", ahead: "前に待っている組数", calc: "リアルタイムで計算中...", call: "<b style='color:#e74c3c; font-size:20px;'>すぐにご入場ください！</b>", done: "入場が完了しました。", alertErr: "無効なアクセス、またはデータが期限切れです。" },
+        zh: { title: "KNY Company - 等候状态", overlayTitle: "🔔 开启声音提醒", overlayDesc: "轮到您时会有<b>语音提醒</b>。<br>请点击下方按钮开启声音。", overlayBtn: "点击开始", sndOn: "声音开", sndOff: "声音关", locLoad: "📍 正在确认场地...", myNum: "您的号码: ", ahead: "前面等候的组数", calc: "正在实时计算...", call: "<b style='color:#e74c3c; font-size:20px;'>请立即入场！</b>", done: "入场已完成。", alertErr: "无效访问或数据已过期。" }
+    };
+
+    let userLang = (navigator.language || navigator.userLanguage || 'en').substring(0, 2);
+    if (!['ko', 'en', 'ja', 'zh'].includes(userLang)) userLang = 'en';
+    const lang = i18n[userLang];
+
     const waitlistId = sessionStorage.getItem('waitlist_id');
     const teamName = sessionStorage.getItem('waitlist_team');
     
-    // 오디오 객체 생성
+    // 한국어용 MP3 파일
     const audioProgress = new Audio('/sounds/wait_progress.mp3');
     const audioNext = new Audio('/sounds/wait_next.mp3');
     const audioCalled = new Audio('/sounds/wait_called.mp3');
-    // 빈 오디오 핑(테스트용) 생성
     const audioPing = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA'); 
+    
+    // 외국어용 비프음 컨텍스트
+    let audioCtx;
 
     let lastRemain = null;
     let lastStatus = 'waiting';
@@ -74,8 +83,19 @@
     let isUnlocked = false; 
 
     document.addEventListener('DOMContentLoaded', () => {
+        // 다국어 적용
+        document.title = lang.title;
+        document.getElementById('txt-overlay-title').innerText = lang.overlayTitle;
+        document.getElementById('txt-overlay-desc').innerHTML = lang.overlayDesc;
+        document.getElementById('txt-overlay-btn').innerText = lang.overlayBtn;
+        document.getElementById('audioTxt').innerText = lang.sndOn;
+        document.getElementById('teamName').innerText = lang.locLoad;
+        document.getElementById('myNum').innerText = lang.myNum + "--";
+        document.getElementById('txt-ahead').innerText = lang.ahead;
+        document.getElementById('statusMsg').innerText = lang.calc;
+
         if (!waitlistId || !teamName) {
-            alert('잘못된 접근이거나 데이터가 만료되었습니다.');
+            alert(lang.alertErr);
             return;
         }
         document.getElementById('teamName').innerText = `📍 ${decodeURIComponent(teamName)}`;
@@ -83,16 +103,11 @@
         setInterval(fetchStatus, 4000);
     });
 
-    // 💡 화면이 다시 켜졌을 때 (백그라운드에서 돌아왔을 때)
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
-            fetchStatus(); // 즉시 상태 갱신
-            
-            // 오디오 권한이 아직 살아있는지 무음 핑을 보내 테스트합니다.
+            fetchStatus(); 
             if (isAudioOn && isUnlocked) {
                 audioPing.play().catch(e => {
-                    // 권한이 뺏겼다면(에러 발생) 다시 오버레이 창을 띄워 터치를 유도합니다.
-                    console.log("Audio privilege lost. Requesting touch again.");
                     isUnlocked = false;
                     document.getElementById('safety-overlay').classList.remove('hidden');
                 });
@@ -100,13 +115,17 @@
         }
     });
 
-    // 💡 터치 시 오디오 강제 활성화
     function unlockAudio() {
         if(isUnlocked) return;
         
-        audioProgress.play().then(() => { audioProgress.pause(); audioProgress.currentTime = 0; }).catch(()=>{});
-        audioNext.play().then(() => { audioNext.pause(); audioNext.currentTime = 0; }).catch(()=>{});
-        audioCalled.play().then(() => { audioCalled.pause(); audioCalled.currentTime = 0; }).catch(()=>{});
+        if (userLang === 'ko') {
+            audioProgress.play().then(() => { audioProgress.pause(); audioProgress.currentTime = 0; }).catch(()=>{});
+            audioNext.play().then(() => { audioNext.pause(); audioNext.currentTime = 0; }).catch(()=>{});
+            audioCalled.play().then(() => { audioCalled.pause(); audioCalled.currentTime = 0; }).catch(()=>{});
+        } else {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
         audioPing.play().then(() => { audioPing.pause(); audioPing.currentTime = 0; }).catch(()=>{});
         
         isUnlocked = true;
@@ -115,8 +134,38 @@
         const btn = document.getElementById('audioBtn');
         btn.classList.add('active');
         document.getElementById('audioIcon').innerText = "🔊";
-        document.getElementById('audioTxt').innerText = "소리 켬";
+        document.getElementById('audioTxt').innerText = lang.sndOn;
         isAudioOn = true;
+    }
+
+    // 외국어용 패턴 비프음 재생
+    function playBeep(type) {
+        if (!audioCtx || audioCtx.state === 'suspended') return;
+        const playTone = (freq, st, dur) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.frequency.value = freq; osc.type = 'sine';
+            osc.start(st);
+            gain.gain.setValueAtTime(0.5, st);
+            gain.gain.exponentialRampToValueAtTime(0.01, st + dur);
+            osc.stop(st + dur);
+        };
+        let t = audioCtx.currentTime;
+        if (type === 'progress') { playTone(500, t, 0.15); }
+        else if (type === 'next') { playTone(600, t, 0.1); playTone(600, t + 0.2, 0.1); }
+        else if (type === 'called') { playTone(800, t, 0.2); playTone(800, t + 0.3, 0.2); playTone(1000, t + 0.6, 0.4); }
+    }
+
+    function triggerAudio(type) {
+        if (!isAudioOn || !isUnlocked) return;
+        if (userLang === 'ko') {
+            if (type === 'progress') { audioProgress.currentTime = 0; audioProgress.play().catch(e=>{}); }
+            else if (type === 'next') { audioNext.currentTime = 0; audioNext.play().catch(e=>{}); }
+            else if (type === 'called') { audioCalled.currentTime = 0; audioCalled.play().catch(e=>{}); }
+        } else {
+            playBeep(type);
+        }
     }
 
     async function fetchStatus() {
@@ -125,46 +174,34 @@
             const res = await fetch(`/api/waitlist/status?id=${waitlistId}&teamName=${encodeURIComponent(teamName)}`);
             const data = await res.json();
             
-            document.getElementById('myNum').innerText = `내 번호: ${data.waitingNumber}번`;
+            document.getElementById('myNum').innerText = lang.myNum + data.waitingNumber;
             const currentRemain = data.remainTeams;
             const currentStatus = data.status;
             const countEl = document.getElementById('remainCount');
 
             if (currentStatus === 'called' && lastStatus !== 'called') {
                 document.body.classList.add('flash-red');
-                document.getElementById('statusMsg').innerHTML = "<b style='color:#e74c3c; font-size:20px;'>지금 즉시 입장해 주세요!</b>";
-                
-                if (isAudioOn && isUnlocked) {
-                    audioCalled.currentTime = 0;
-                    audioCalled.play().catch(e => console.log('Audio blocked', e));
-                }
+                document.getElementById('statusMsg').innerHTML = lang.call;
+                triggerAudio('called');
             }
             else if (currentStatus === 'waiting' && lastRemain !== null && currentRemain < lastRemain) {
                 countEl.classList.add('pop');
                 document.body.classList.add('flash-green');
                 
-                if (isAudioOn && isUnlocked) {
-                    if (currentRemain === 1) {
-                        audioNext.currentTime = 0;
-                        audioNext.play().catch(e => console.log('Audio blocked', e));
-                    } else {
-                        audioProgress.currentTime = 0;
-                        audioProgress.play().catch(e => console.log('Audio blocked', e));
-                    }
-                }
+                if (currentRemain === 1) triggerAudio('next');
+                else triggerAudio('progress');
                 
                 setTimeout(() => {
                     countEl.classList.remove('pop');
                     document.body.classList.remove('flash-green');
                 }, 600);
             }
-
             countEl.innerText = currentRemain;
             lastRemain = currentRemain;
             lastStatus = currentStatus;
 
             if (currentStatus === 'completed') {
-                document.getElementById('statusMsg').innerText = "입장이 완료되었습니다.";
+                document.getElementById('statusMsg').innerText = lang.done;
             }
         } catch (e) { console.log(e); }
     }
@@ -175,10 +212,10 @@
             unlockAudio();
         } else {
             isAudioOn = false;
-            isUnlocked = false; // 수동으로 껐으므로 잠금 상태로 간주
+            isUnlocked = false; 
             btn.classList.remove('active');
             document.getElementById('audioIcon').innerText = "🔇";
-            document.getElementById('audioTxt').innerText = "소리 끔";
+            document.getElementById('audioTxt').innerText = lang.sndOff;
         }
     }
 </script>
