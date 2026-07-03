@@ -13,9 +13,16 @@
         label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 14px; }
         select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; margin-bottom: 15px; }
         
+        .settings-area { background: #eef2f5; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #dcdde1; display: none; }
+        .settings-area.active { display: block; }
+        .setting-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .setting-row input[type="number"] { width: 80px; padding: 8px; border-radius: 6px; border: 1px solid #ccc; text-align: center; }
+        .btn-save-settings { background: #2ecc71; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; }
+
         .btn-qr { display: block; text-align: center; background: #2c3e50; color: white; padding: 15px; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px; transition: 0.2s; }
         .btn-qr:hover { background: #34495e; }
         .btn-qr.disabled { background: #95a5a6; pointer-events: none; }
+        
         .list-card { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; }
         table { width: 100%; border-collapse: collapse; font-size: 15px; }
         th, td { padding: 15px; text-align: center; border-bottom: 1px solid #eee; }
@@ -27,9 +34,7 @@
         .btn-action { padding: 8px 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; color: white; }
         .btn-call { background: #2ecc71; margin-right: 5px; }
         .btn-complete { background: #95a5a6; }
-        @media (max-width: 600px) {
-            th:nth-child(3), td:nth-child(3) { display: none; } /* 모바일에서 인원수 숨김 */
-        }
+        @media (max-width: 600px) { th:nth-child(3), td:nth-child(3) { display: none; } }
     </style>
 </head>
 <body>
@@ -41,9 +46,24 @@
             <option value="">데이터를 불러오는 중...</option>
         </select>
         
-        <!-- 💡 onclick 함수로 변경하여 토큰을 동적으로 생성합니다 -->
+        <!-- 행사장 설정 영역 -->
+        <div id="settings-area" class="settings-area">
+            <div style="font-weight:bold; margin-bottom:10px; color:#34495e;">⚙️ 행사장 운영 설정</div>
+            <div class="setting-row">
+                <input type="checkbox" id="chk-kakao">
+                <label for="chk-kakao" style="display:inline; margin:0;">카카오톡 알림톡 발송 기능 사용</label>
+            </div>
+            <div class="setting-row">
+                <input type="checkbox" id="chk-maxwait" onchange="toggleMaxInput()">
+                <label for="chk-maxwait" style="display:inline; margin:0;">최대 웨이팅 인원 제한 사용 : </label>
+                <input type="number" id="num-maxwait" min="1" value="50" disabled> 명 까지만 받기
+            </div>
+            <button class="btn-save-settings" onclick="saveSettings()">설정 저장하기</button>
+        </div>
+
         <a href="#" id="qr-link" onclick="openCustomerQR(); return false;" class="btn-qr disabled">📺 입구 고객용 QR 스크린 띄우기 (클릭)</a>
     </div>
+    
     <div class="list-card">
         <table>
             <thead>
@@ -66,125 +86,119 @@
     let refreshInterval;
     let selectedTeamName = "";
 
-    document.addEventListener('DOMContentLoaded', () => {
-        loadTeams();
-    });
+    document.addEventListener('DOMContentLoaded', () => { loadTeams(); });
 
-    // 1. 등록된 행사장 목록 불러오기
     async function loadTeams() {
         try {
             const res = await fetch('/api/employees');
             const list = await res.json();
             const teams = [...new Set(list.map(emp => emp.team_name).filter(Boolean))];
-            
             const selector = document.getElementById('team-selector');
-            if(teams.length === 0) {
-                selector.innerHTML = '<option value="">등록된 행사장이 없습니다.</option>';
-                return;
-            }
-            
-            selector.innerHTML = '<option value="">-- 행사장을 선택하세요 --</option>' + 
-                                 teams.map(team => `<option value="${team}">${team}</option>`).join('');
-        } catch (e) { console.log("팀 로드 실패", e); }
+            if(teams.length === 0) { selector.innerHTML = '<option value="">등록된 행사장이 없습니다.</option>'; return; }
+            selector.innerHTML = '<option value="">-- 행사장을 선택하세요 --</option>' + teams.map(team => `<option value="${team}">${team}</option>`).join('');
+        } catch (e) {}
     }
 
-    // 2. 행사장이 선택되었을 때 리스트 로드 시작
+    function toggleMaxInput() {
+        document.getElementById('num-maxwait').disabled = !document.getElementById('chk-maxwait').checked;
+    }
+
     function handleTeamChange() {
         selectedTeamName = document.getElementById('team-selector').value;
         const qrLink = document.getElementById('qr-link');
+        const settingsArea = document.getElementById('settings-area');
         
         if (refreshInterval) clearInterval(refreshInterval);
         if (!selectedTeamName) {
             qrLink.classList.add('disabled');
+            settingsArea.classList.remove('active');
             document.getElementById('waitlist-tbody').innerHTML = '<tr><td colspan="5" style="padding:30px; color:#7f8c8d;">행사장을 선택하면 대기열이 표시됩니다.</td></tr>';
             return;
         }
 
-        // QR 링크 활성화
         qrLink.classList.remove('disabled');
-
-        // 리스트 로드 및 5초마다 갱신
+        settingsArea.classList.add('active');
+        
+        // 팀 설정 불러오기
+        loadSettings();
+        
         loadWaitlistData();
         refreshInterval = setInterval(loadWaitlistData, 5000);
     }
 
-    // 💡 [핵심 보안] 고객용 QR 창을 열 때 보안 토큰을 부여합니다.
+    async function loadSettings() {
+        try {
+            const res = await fetch(`/api/admin/settings?team=${encodeURIComponent(selectedTeamName)}`);
+            const data = await res.json();
+            document.getElementById('chk-kakao').checked = (data.kakao_use === 1);
+            document.getElementById('chk-maxwait').checked = (data.max_wait_use === 1);
+            document.getElementById('num-maxwait').value = data.max_wait_count || 50;
+            toggleMaxInput();
+        } catch(e) {}
+    }
+
+    async function saveSettings() {
+        const payload = {
+            team_name: selectedTeamName,
+            kakao_use: document.getElementById('chk-kakao').checked ? 1 : 0,
+            max_wait_use: document.getElementById('chk-maxwait').checked ? 1 : 0,
+            max_wait_count: parseInt(document.getElementById('num-maxwait').value) || 50
+        };
+        try {
+            const res = await fetch('/api/admin/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) alert('설정이 저장되었습니다.');
+        } catch(e) { alert('설정 저장 실패'); }
+    }
+
     function openCustomerQR() {
         if (!selectedTeamName) return;
-
         const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
         const adminToken = Math.floor(nowKst.getTime() / 10000);
         const fakeSig = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        
         const displayUrl = `${window.location.origin}/waiting/qr-display.html?team=${encodeURIComponent(selectedTeamName)}&admin_token=${adminToken}&signature=${fakeSig}`;
-        
         window.open(displayUrl, '_blank');
     }
 
-    // 3. 웨이팅 리스트 데이터 로드
     async function loadWaitlistData() {
         if(!selectedTeamName) return;
         try {
             const res = await fetch(`/api/admin/waitlist?teamName=${encodeURIComponent(selectedTeamName)}`);
             const list = await res.json();
-            
             if (list.length === 0) {
                 document.getElementById('waitlist-tbody').innerHTML = '<tr><td colspan="5" style="padding:30px; color:#7f8c8d;">현재 대기열이 없습니다.</td></tr>';
                 return;
             }
             document.getElementById('waitlist-tbody').innerHTML = list.map(item => {
-                const maskedPhone = item.phone.length === 11 
-                    ? `${item.phone.substring(0,3)}-****-${item.phone.substring(7,11)}` 
-                    : item.phone;
-                let statusBadge = '';
-                if(item.status === 'waiting') statusBadge = '<span class="status-waiting">대기중</span>';
-                if(item.status === 'called') statusBadge = '<span class="status-called">호출됨</span>';
-                if(item.status === 'completed') statusBadge = '<span class="status-completed">입장완료</span>';
-                return `
-                <tr>
+                const maskedPhone = item.phone.length === 11 ? `${item.phone.substring(0,3)}-****-${item.phone.substring(7,11)}` : item.phone;
+                let statusBadge = item.status === 'waiting' ? '<span class="status-waiting">대기중</span>' : item.status === 'called' ? '<span class="status-called">호출됨</span>' : '<span class="status-completed">입장완료</span>';
+                return `<tr>
                     <td style="font-weight:bold; font-size:18px;">${item.waiting_number}</td>
-                    <td>
-                        <div style="font-weight:bold;">${item.name}</div>
-                        <div style="font-size:12px; color:#7f8c8d;">${maskedPhone}</div>
-                    </td>
-                    <td>${item.count}명</td>
-                    <td>${statusBadge}</td>
-                    <td>
-                        ${item.status !== 'completed' ? `
-                            <button class="btn-action btn-call" onclick="callCustomer(${item.id})">호출</button>
-                            <button class="btn-action btn-complete" onclick="completeCustomer(${item.id})">완료</button>
-                        ` : '-'}
-                    </td>
-                </tr>
-                `;
+                    <td><div style="font-weight:bold;">${item.name}</div><div style="font-size:12px; color:#7f8c8d;">${maskedPhone}</div></td>
+                    <td>${item.count}명</td><td>${statusBadge}</td>
+                    <td>${item.status !== 'completed' ? `<button class="btn-action btn-call" onclick="callCustomer(${item.id}, '${item.phone}')">호출</button><button class="btn-action btn-complete" onclick="completeCustomer(${item.id})">완료</button>` : '-'}</td>
+                </tr>`;
             }).join('');
-        } catch(e) { console.log(e); }
+        } catch(e) {}
     }
 
-    // 4. 고객 호출 함수
-    async function callCustomer(id) {
-        if(!confirm('이 고객을 호출하시겠습니까?\n(고객 화면에 입장 안내가 즉시 뜹니다.)')) return;
+    async function callCustomer(id, phone) {
+        if(!confirm('이 고객을 호출하시겠습니까?')) return;
         try {
-            await fetch('/api/admin/waitlist', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: id, status: 'called' })
-            });
+            await fetch('/api/admin/waitlist', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id, status: 'called', phone: phone, team_name: selectedTeamName }) });
             loadWaitlistData();
-        } catch(e) { alert('통신 오류'); }
+        } catch(e) {}
     }
 
-    // 5. 입장 완료 함수
     async function completeCustomer(id) {
-        if(!confirm('이 고객을 입장 완료 처리하시겠습니까?')) return;
+        if(!confirm('입장 완료 처리하시겠습니까?')) return;
         try {
-            await fetch('/api/admin/waitlist', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: id, status: 'completed' })
-            });
+            await fetch('/api/admin/waitlist', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id, status: 'completed' }) });
             loadWaitlistData();
-        } catch(e) { alert('통신 오류'); }
+        } catch(e) {}
     }
 </script>
 </body>
