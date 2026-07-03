@@ -80,8 +80,9 @@
             const timeSlice = Math.floor(nowKst.getTime() / 10000); 
             const fakeSig = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2) + "KNYSECURE";
             
-            // QR코드에 담길 주소
-            const fullUrl = window.location.origin + "/attendance.html?auth_sig=" + fakeSig + "&token=" + timeSlice + "&mode=secure";
+            // 💡 [수정] 직원이 QR을 스캔했을 때 넘어갈 주소를 /employee/scan.html 로 변경
+            const fullUrl = window.location.origin + "/employee/scan.html?auth_sig=" + fakeSig + "&token=" + timeSlice + "&mode=secure";
+            
             document.getElementById('debug-url').innerText = "코드 번호: " + timeSlice; 
             
             const cacheBuster = new Date().getTime() + Math.random();
