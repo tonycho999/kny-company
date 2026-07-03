@@ -22,10 +22,10 @@
         .form-group label { display: block; font-weight: bold; margin-bottom: 8px; }
         .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
         
-        button.save-btn { background: #2ecc71; color: white; padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        button.save-btn { background: #2ecc71; color: white; padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; }
         button.delete-btn { background: #e74c3c; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
         th { background: #f8f9fa; }
     </style>
@@ -46,6 +46,11 @@
             <!-- 직원 등록 폼 -->
             <div style="flex: 1; background: #f8f9fa; padding: 20px; border-radius: 8px;">
                 <h3>직원 등록</h3>
+                <!-- 💡 누락되었던 사원번호 복구 -->
+                <div class="form-group">
+                    <label>사원번호</label>
+                    <input type="text" id="emp-id" placeholder="예: 2026001">
+                </div>
                 <div class="form-group">
                     <label>이름</label>
                     <input type="text" id="emp-name" placeholder="홍길동">
@@ -67,6 +72,8 @@
                 <table>
                     <thead>
                         <tr>
+                            <!-- 💡 테이블 헤더에 사원번호 복구 -->
+                            <th>사원번호</th>
                             <th>이름</th>
                             <th>전화번호</th>
                             <th>근무지</th>
@@ -76,7 +83,7 @@
                         </tr>
                     </thead>
                     <tbody id="emp-tbody">
-                        <tr><td colspan="6">로딩 중...</td></tr>
+                        <tr><td colspan="7">로딩 중...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -142,39 +149,65 @@
         loadPortfolios();
     });
 
+    // --- 직원 관리 함수 ---
     async function loadEmployees() {
-        const res = await fetch('/api/employees');
-        const data = await res.json();
-        const tbody = document.getElementById('emp-tbody');
-        tbody.innerHTML = data.map(emp => `
-            <tr>
-                <td>${emp.name}</td>
-                <td>${emp.phone}</td>
-                <td>${emp.team_name}</td>
-                <td>${emp.check_in_time ? new Date(emp.check_in_time).toLocaleTimeString('ko-KR') : '-'}</td>
-                <td>${emp.check_out_time ? new Date(emp.check_out_time).toLocaleTimeString('ko-KR') : '-'}</td>
-                <td><button class="delete-btn" onclick="deleteEmployee(${emp.id})">삭제</button></td>
-            </tr>
-        `).join('');
+        try {
+            const res = await fetch('/api/employees');
+            const data = await res.json();
+            const tbody = document.getElementById('emp-tbody');
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7">등록된 직원이 없습니다.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(emp => `
+                <tr>
+                    <!-- 💡 DB에서 불러온 사원번호 렌더링 -->
+                    <td>${emp.emp_id}</td>
+                    <td>${emp.name}</td>
+                    <td>${emp.phone}</td>
+                    <td>${emp.team_name}</td>
+                    <td>${emp.check_in_time ? new Date(emp.check_in_time).toLocaleTimeString('ko-KR') : '-'}</td>
+                    <td>${emp.check_out_time ? new Date(emp.check_out_time).toLocaleTimeString('ko-KR') : '-'}</td>
+                    <td><button class="delete-btn" onclick="deleteEmployee(${emp.id})">삭제</button></td>
+                </tr>
+            `).join('');
+        } catch(e) {
+            document.getElementById('emp-tbody').innerHTML = '<tr><td colspan="7">데이터를 불러오지 못했습니다.</td></tr>';
+        }
     }
 
     async function addEmployee() {
+        // 💡 폼에서 사원번호 값 가져오기
+        const emp_id = document.getElementById('emp-id').value;
         const name = document.getElementById('emp-name').value;
         const phone = document.getElementById('emp-phone').value;
         const team_name = document.getElementById('emp-team').value;
 
-        if(!name || !phone || !team_name) return alert('모든 항목을 입력해주세요.');
+        if(!emp_id || !name || !phone || !team_name) return alert('모든 항목을 입력해주세요.');
 
-        await fetch('/api/employees', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, phone, team_name })
-        });
-        alert('등록되었습니다.');
-        document.getElementById('emp-name').value = '';
-        document.getElementById('emp-phone').value = '';
-        document.getElementById('emp-team').value = '';
-        loadEmployees();
+        try {
+            const res = await fetch('/api/employees', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // 💡 API로 사원번호(emp_id) 함께 전송
+                body: JSON.stringify({ emp_id, name, phone, team_name })
+            });
+            
+            if(res.ok) {
+                alert('등록되었습니다.');
+                document.getElementById('emp-id').value = '';
+                document.getElementById('emp-name').value = '';
+                document.getElementById('emp-phone').value = '';
+                document.getElementById('emp-team').value = '';
+                loadEmployees();
+            } else {
+                alert('등록에 실패했습니다. (사원번호 중복 등)');
+            }
+        } catch(e) {
+            alert('서버 통신 오류');
+        }
     }
 
     async function deleteEmployee(id) {
@@ -187,24 +220,29 @@
         loadEmployees();
     }
 
+    // --- 포트폴리오 관리 함수 ---
     async function loadPortfolios() {
-        const res = await fetch('/api/portfolios');
-        const data = await res.json();
-        const tbody = document.getElementById('pf-tbody');
-        
-        if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4">등록된 포트폴리오가 없습니다.</td></tr>';
-            return;
-        }
+        try {
+            const res = await fetch('/api/portfolios');
+            const data = await res.json();
+            const tbody = document.getElementById('pf-tbody');
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4">등록된 포트폴리오가 없습니다.</td></tr>';
+                return;
+            }
 
-        tbody.innerHTML = data.map(item => `
-            <tr>
-                <td>${item.id}</td>
-                <td>${item.title}</td>
-                <td>${new Date(item.created_at).toLocaleDateString('ko-KR')}</td>
-                <td><button class="delete-btn" onclick="deletePortfolio(${item.id})">삭제</button></td>
-            </tr>
-        `).join('');
+            tbody.innerHTML = data.map(item => `
+                <tr>
+                    <td>${item.id}</td>
+                    <td>${item.title}</td>
+                    <td>${new Date(item.created_at).toLocaleDateString('ko-KR')}</td>
+                    <td><button class="delete-btn" onclick="deletePortfolio(${item.id})">삭제</button></td>
+                </tr>
+            `).join('');
+        } catch(e) {
+            document.getElementById('pf-tbody').innerHTML = '<tr><td colspan="4">데이터를 불러오지 못했습니다.</td></tr>';
+        }
     }
 
     async function savePortfolio() {
