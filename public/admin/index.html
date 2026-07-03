@@ -52,7 +52,6 @@
         <button class="tab-btn" onclick="showPanel('portfolio-panel')">포트폴리오 작성/관리</button>
     </div>
 
-    <!-- 1️⃣ 대규모 직원 및 근태 관리 패널 -->
     <div id="employee-panel" class="panel active">
         
         <div class="add-employee-form">
@@ -85,7 +84,6 @@
         </div>
     </div>
 
-    <!-- 2️⃣ 포트폴리오 관리 패널 -->
     <div id="portfolio-panel" class="panel">
         <h3 style="margin-top:0;">새 포트폴리오 작성</h3>
         <div class="pf-form-group"><label>제목</label><input type="text" id="pf-title" placeholder="행사 실적 제목을 입력하세요"></div>
@@ -116,7 +114,7 @@
     }
 
     let allEmployees = []; 
-    let editingEmployeeId = null; // 수정 중인 직원 ID 저장용
+    let editingEmployeeId = null;
 
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('search-date').valueAsDate = new Date();
@@ -191,7 +189,6 @@
         `).join('');
     }
 
-    // 💡 정보 수정 버튼을 눌렀을 때
     function editEmployee(id) {
         const emp = allEmployees.find(e => e.id === id);
         if(!emp) return;
@@ -204,14 +201,13 @@
         editingEmployeeId = id;
         
         const submitBtn = document.getElementById('btn-emp-submit');
-        submitBtn.innerText = '정보 수정 완료';
+        submitBtn.innerText = '완료'; // 💡 요청하신 대로 텍스트를 짧게 수정했습니다!
         submitBtn.style.backgroundColor = '#f39c12';
         document.getElementById('btn-emp-cancel').style.display = 'inline-block';
         
-        window.scrollTo({top: 0, behavior: 'smooth'}); // 맨 위로 올리기
+        window.scrollTo({top: 0, behavior: 'smooth'}); 
     }
 
-    // 💡 취소 버튼 눌렀을 때 초기화
     function resetEmployeeForm() {
         document.getElementById('add-emp-id').value = '';
         document.getElementById('add-name').value = '';
@@ -226,7 +222,6 @@
         document.getElementById('btn-emp-cancel').style.display = 'none';
     }
 
-    // 💡 신규 등록 또는 업데이트 처리
     async function addOrUpdateEmployee() {
         const emp_id = document.getElementById('add-emp-id').value.trim();
         const name = document.getElementById('add-name').value.trim();
@@ -238,14 +233,12 @@
         try {
             let res;
             if (editingEmployeeId) {
-                // 수정 (PUT)
                 res = await fetch('/api/employees', { 
                     method: 'PUT', 
                     headers: { 'Content-Type': 'application/json' }, 
                     body: JSON.stringify({ id: editingEmployeeId, emp_id, name, phone, team_name }) 
                 });
             } else {
-                // 신규 등록 (POST)
                 res = await fetch('/api/employees', { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' }, 
@@ -263,14 +256,12 @@
         } catch(e) { alert('서버 통신 오류'); }
     }
 
-    // 💡 삭제 로직
+    // 💡 [수정됨] URL 뒤에 파라미터로 명확하게 ID를 던져줍니다.
     async function deleteEmployee(id) {
         if(!confirm('이 직원의 정보를 완전히 삭제하시겠습니까?')) return;
         try {
-            const res = await fetch('/api/employees', { 
-                method: 'DELETE', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ id }) 
+            const res = await fetch(`/api/employees?id=${id}`, { 
+                method: 'DELETE'
             });
             if (res.ok) {
                 alert('삭제되었습니다.');
@@ -283,7 +274,6 @@
         }
     }
 
-    // --- 이하 포트폴리오 기존 코드 유지 ---
     async function loadPortfolios() {
         try {
             const res = await fetch('/api/portfolios');
