@@ -18,7 +18,6 @@ export async function onRequestPost(context) {
             "INSERT INTO employees (emp_id, name, phone, team_name) VALUES (?, ?, ?, ?)"
         ).bind(emp_id, name, phone, team_name || '').run();
 
-        // 등록된 행사장 자동 세팅
         if (team_name && team_name.trim() !== '') {
             await context.env.DB.prepare(`
                 INSERT OR IGNORE INTO team_settings (team_name, kakao_use, max_wait_use, max_wait_count)
@@ -32,7 +31,6 @@ export async function onRequestPost(context) {
     }
 }
 
-// 💡 [새로 추가됨] 직원 정보 수정(업데이트) 기능
 export async function onRequestPut(context) {
     try {
         const data = await context.request.json();
@@ -44,7 +42,6 @@ export async function onRequestPut(context) {
             "UPDATE employees SET emp_id = ?, name = ?, phone = ?, team_name = ? WHERE id = ?"
         ).bind(emp_id, name, phone, team_name || '', id).run();
 
-        // 수정된 행사장도 자동 세팅
         if (team_name && team_name.trim() !== '') {
             await context.env.DB.prepare(`
                 INSERT OR IGNORE INTO team_settings (team_name, kakao_use, max_wait_use, max_wait_count)
@@ -58,11 +55,15 @@ export async function onRequestPut(context) {
     }
 }
 
-// 💡 삭제 기능 강화
+// 💡 [수정됨] URL에서 직접 ID를 추출하여 확실하게 삭제합니다.
 export async function onRequestDelete(context) {
     try {
-        const data = await context.request.json();
-        await context.env.DB.prepare("DELETE FROM employees WHERE id = ?").bind(data.id).run();
+        const url = new URL(context.request.url);
+        const id = url.searchParams.get("id");
+        
+        if (!id) throw new Error("삭제할 ID가 전달되지 않았습니다.");
+
+        await context.env.DB.prepare("DELETE FROM employees WHERE id = ?").bind(id).run();
         
         return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } });
     } catch (e) {
