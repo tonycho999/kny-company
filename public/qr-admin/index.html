@@ -10,11 +10,10 @@
         h1 { color: #2c3e50; font-size: 28px; margin-bottom: 5px; font-weight: bold; }
         .sub-title { color: #7f8c8d; font-size: 16px; margin-bottom: 25px; font-weight: 500; }
         
-        /* 💡 초기에는 QR 영역 숨김 */
         #qr-display-area { display: none; }
-        #qr-image { width: 250px; height: 250px; margin: 15px 0; }
+        /* QR 이미지 크기를 명확히 지정하고 테두리를 줍니다 */
+        #qr-image { width: 250px; height: 250px; margin: 15px 0; border: 1px solid #eee; padding: 10px; border-radius: 12px; }
         
-        /* 💡 버튼 스타일 추가 */
         .btn-generate { background: #3498db; color: white; border: none; padding: 15px 30px; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.2s; width: 100%; margin-bottom: 20px; }
         .btn-generate:hover { background: #2980b9; }
 
@@ -32,11 +31,12 @@
         <h1>직원 출퇴근 인증</h1>
         <div class="sub-title">현장 직원이 도착하면 아래 버튼을 눌러주세요</div>
         
-        <!-- 💡 1. QR 생성 버튼 -->
         <button id="gen-btn" class="btn-generate" onclick="startQRSystem()">출퇴근 QR 화면에 띄우기</button>
         
-        <!-- 💡 2. 버튼을 누르면 나타나는 실제 QR 영역 -->
         <div id="qr-display-area">
+            <!-- 디버깅용: 생성된 URL이 뭔지 작게 보여주는 영역 추가 -->
+            <p id="debug-url" style="font-size:10px; color:#bdc3c7; word-break: break-all; margin-bottom:5px;"></p>
+            
             <img id="qr-image" src="" alt="출퇴근 보안 QR코드">
             
             <div class="timer-bar">
@@ -50,19 +50,14 @@
         let qrInterval;
         let timerInterval;
 
-        // 💡 버튼을 눌렀을 때 실행되는 함수
         function startQRSystem() {
-            // 버튼 숨기고 QR 영역 표시
             document.getElementById('gen-btn').style.display = 'none';
             document.getElementById('qr-display-area').style.display = 'block';
             
-            // 즉시 첫 번째 QR 생성
-            generateAdminQR();
+            generateAdminQR(); // 1회 즉시 실행
             
-            // 이후 10초마다 완전히 새로운 복잡한 URL을 가진 QR 생성
-            qrInterval = setInterval(generateAdminQR, 10000);
+            qrInterval = setInterval(generateAdminQR, 10000); // 10초 반복
 
-            // 10초 타이머 애니메이션 세팅
             const prog = document.getElementById('progress');
             prog.style.animation = 'countdown 10s linear infinite';
             
@@ -73,22 +68,23 @@
             }, 10000);
         }
 
-        // 💡 복잡하고 매번 바뀌는 안전한 URL을 만드는 핵심 함수
         function generateAdminQR() {
-            // 1. 순수 KST 시간 기반 토큰 생성 (10초 단위)
             const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
-            const timeSlice = Math.floor(nowKst.getTime() / 10000);
+            const timeSlice = Math.floor(nowKst.getTime() / 10000); // 10초 단위 토큰
             
-            // 2. 아무나 예측할 수 없는 난수(가짜 서명)를 엄청 길게 추가하여 주소 복사 엄두를 못 내게 함
-            const fakeSig = Math.random().toString(36).substring(2) + 
-                            Math.random().toString(36).substring(2) + 
-                            Math.random().toString(36).substring(2);
+            // 더 복잡하고 긴 가짜 서명 생성
+            const fakeSig = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2) + "KNYSECURE";
             
-            // 3. 직원이 카메라로 찍을 매우 복잡한 출퇴근용 URL 생성
-            const targetUrl = `${window.location.origin}/attendance.html?auth_sig=${fakeSig}&token=${timeSlice}&mode=secure`;
+            // 💡 확실하게 쿼리 파라미터(? 뒤의 값)가 붙도록 문자열 조합을 단단히 묶음
+            // window.location.origin은 "https://kny-company.com" 과 같이 나옵니다.
+            const fullUrl = window.location.origin + "/attendance.html?auth_sig=" + fakeSig + "&token=" + timeSlice + "&mode=secure";
             
-            // 4. 해당 URL을 QR 코드로 변환하여 화면에 출력
-            document.getElementById('qr-image').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(targetUrl)}`;
+            // 디버깅용 텍스트 (화면에 아주 작게 복잡한 URL이 제대로 생성되었는지 찍어줍니다)
+            document.getElementById('debug-url').innerText = fullUrl;
+            
+            // QR 코드 생성 API 호출
+            // 데이터를 URL-safe하게 감싸서(encodeURIComponent) API에 전달
+            document.getElementById('qr-image').src = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=" + encodeURIComponent(fullUrl);
         }
     </script>
 </body>
