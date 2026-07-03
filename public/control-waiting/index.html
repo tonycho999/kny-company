@@ -11,8 +11,12 @@
         
         .top-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; }
         label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 14px; }
-        select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; margin-bottom: 15px; }
+        select, input[type="date"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; margin-bottom: 15px; box-sizing: border-box; }
         
+        /* 💡 추가: 달력과 행사장 선택을 나란히 배치 */
+        .filter-group { display: flex; gap: 15px; margin-bottom: 15px; }
+        .filter-group > div { flex: 1; }
+
         .settings-area { background: #eef2f5; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #dcdde1; display: none; }
         .settings-area.active { display: block; }
         .setting-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
@@ -41,12 +45,21 @@
 <div class="container">
     <h1>📋 현장 웨이팅 통제 데스크</h1>
     <div class="top-card">
-        <label>📍 현재 담당하고 있는 행사장을 선택하세요</label>
-        <select id="team-selector" onchange="handleTeamChange()">
-            <option value="">데이터를 불러오는 중...</option>
-        </select>
         
-        <!-- 행사장 설정 영역 -->
+        <div class="filter-group">
+            <div>
+                <label>📅 날짜 선택</label>
+                <!-- 💡 추가: 달력 부활 -->
+                <input type="date" id="date-selector" onchange="handleFilterChange()">
+            </div>
+            <div>
+                <label>📍 현재 담당 행사장 선택</label>
+                <select id="team-selector" onchange="handleFilterChange()">
+                    <option value="">데이터를 불러오는 중...</option>
+                </select>
+            </div>
+        </div>
+        
         <div id="settings-area" class="settings-area">
             <div style="font-weight:bold; margin-bottom:10px; color:#34495e;">⚙️ 행사장 운영 설정</div>
             <div class="setting-row">
@@ -86,7 +99,12 @@
     let refreshInterval;
     let selectedTeamName = "";
 
-    document.addEventListener('DOMContentLoaded', () => { loadTeams(); });
+    document.addEventListener('DOMContentLoaded', () => { 
+        // 💡 오늘 날짜로 기본 세팅
+        const todayKst = new Date(Date.now() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+        document.getElementById('date-selector').value = todayKst;
+        loadTeams(); 
+    });
 
     async function loadTeams() {
         try {
@@ -103,12 +121,14 @@
         document.getElementById('num-maxwait').disabled = !document.getElementById('chk-maxwait').checked;
     }
 
-    function handleTeamChange() {
+    // 💡 날짜가 바뀌거나 팀이 바뀔 때 실행되는 함수
+    function handleFilterChange() {
         selectedTeamName = document.getElementById('team-selector').value;
         const qrLink = document.getElementById('qr-link');
         const settingsArea = document.getElementById('settings-area');
         
         if (refreshInterval) clearInterval(refreshInterval);
+        
         if (!selectedTeamName) {
             qrLink.classList.add('disabled');
             settingsArea.classList.remove('active');
@@ -119,9 +139,7 @@
         qrLink.classList.remove('disabled');
         settingsArea.classList.add('active');
         
-        // 팀 설정 불러오기
         loadSettings();
-        
         loadWaitlistData();
         refreshInterval = setInterval(loadWaitlistData, 5000);
     }
@@ -164,12 +182,16 @@
     }
 
     async function loadWaitlistData() {
-        if(!selectedTeamName) return;
+        const selectedDate = document.getElementById('date-selector').value;
+        if(!selectedTeamName || !selectedDate) return;
+
         try {
-            const res = await fetch(`/api/admin/waitlist?teamName=${encodeURIComponent(selectedTeamName)}`);
+            // 💡 서버에 요일 정보를 파라미터로 전송
+            const res = await fetch(`/api/admin/waitlist?teamName=${encodeURIComponent(selectedTeamName)}&date=${selectedDate}`);
             const list = await res.json();
+
             if (list.length === 0) {
-                document.getElementById('waitlist-tbody').innerHTML = '<tr><td colspan="5" style="padding:30px; color:#7f8c8d;">현재 대기열이 없습니다.</td></tr>';
+                document.getElementById('waitlist-tbody').innerHTML = '<tr><td colspan="5" style="padding:30px; color:#7f8c8d;">해당 날짜에 대기열이 없습니다.</td></tr>';
                 return;
             }
             document.getElementById('waitlist-tbody').innerHTML = list.map(item => {
