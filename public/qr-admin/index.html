@@ -31,7 +31,6 @@
         <h1>직원 출퇴근 인증 데스크</h1>
         <div class="sub-title">현장 직원이 도착하면 아래 버튼을 눌러주세요</div>
         
-        <!-- 💡 버튼 클릭 시 현재 창의 주소창만 복잡하게 바꾸고 화면을 전환합니다 -->
         <button class="btn-generate" onclick="startQRSystem()">QR 코드 화면 열기</button>
     </div>
 
@@ -57,12 +56,12 @@
             document.getElementById('start-screen').style.display = 'none';
             document.getElementById('qr-display-screen').style.display = 'block';
             
-            // 2. 💡 브라우저 주소창 강제 조작 (새로고침 없이 주소만 엄청 복잡하게 덮어버림)
+            // 2. 브라우저 주소창 덮어쓰기 (현재 경로 뒤에 매우 긴 파라미터를 강제로 붙임)
             const fakeToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-            const complexUrl = `/admin-QR/?session_key=${fakeSig}&auth_time=${Date.now()}&mode=secure_display`;
-            window.history.pushState({path: complexUrl}, '', complexUrl);
+            const complexUrl = "?session_key=" + fakeToken + "&auth_time=" + Date.now() + "&mode=secure_display&sig=" + Math.random().toString(36).substring(2);
+            window.history.pushState({}, '', complexUrl);
             
-            // 3. QR 생성 및 타이머 시작
+            // 3. QR 생성 및 10초 갱신 시작
             generateAdminQR(); 
             setInterval(generateAdminQR, 10000); 
 
@@ -81,6 +80,7 @@
             const timeSlice = Math.floor(nowKst.getTime() / 10000); 
             const fakeSig = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2) + "KNYSECURE";
             
+            // QR코드에 담길 주소
             const fullUrl = window.location.origin + "/attendance.html?auth_sig=" + fakeSig + "&token=" + timeSlice + "&mode=secure";
             document.getElementById('debug-url').innerText = "코드 번호: " + timeSlice; 
             
