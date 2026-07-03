@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KNY Company - 직원 출퇴근용 QR</title>
+    <title>KNY Company - 현장 출퇴근 관리</title>
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; background-color: #2c3e50; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
         .qr-wrapper { background: white; padding: 40px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); max-width: 450px; width: 100%; margin: 20px; color: #333; }
@@ -11,7 +11,6 @@
         .sub-title { color: #7f8c8d; font-size: 16px; margin-bottom: 25px; font-weight: 500; }
         
         #qr-display-area { display: none; }
-        /* QR 이미지 컨테이너 (깜빡임 효과를 위해 감쌈) */
         .img-container { min-height: 270px; display: flex; justify-content: center; align-items: center; }
         #qr-image { width: 250px; height: 250px; margin: 10px 0; border: 1px solid #eee; padding: 10px; border-radius: 12px; transition: opacity 0.2s; }
         
@@ -29,13 +28,12 @@
 <body>
 
     <div class="qr-wrapper">
-        <h1>직원 출퇴근 인증</h1>
+        <h1>직원 출퇴근 인증 데스크</h1>
         <div class="sub-title">현장 직원이 도착하면 아래 버튼을 눌러주세요</div>
         
-        <button id="gen-btn" class="btn-generate" onclick="startQRSystem()">출퇴근 QR 화면에 띄우기</button>
+        <button id="gen-btn" class="btn-generate" onclick="startQRSystem()">출퇴근 QR 생성하기</button>
         
         <div id="qr-display-area">
-            <!-- 디버깅용: 생성된 URL 노출 -->
             <p id="debug-url" style="font-size:10px; color:#bdc3c7; word-break: break-all; margin-bottom:5px; height: 30px;"></p>
             
             <div class="img-container">
@@ -45,7 +43,7 @@
             <div class="timer-bar">
                 <div class="timer-fill" id="progress"></div>
             </div>
-            <p class="notice">⚠️ 원격 복사 방지를 위해 10초마다 코드가 자동 갱신됩니다.</p>
+            <p class="notice">⚠️ 대리 출석 방지를 위해 10초마다 코드가 자동 갱신됩니다.</p>
         </div>
     </div>
 
@@ -58,7 +56,6 @@
             document.getElementById('qr-display-area').style.display = 'block';
             
             generateAdminQR(); 
-            
             qrInterval = setInterval(generateAdminQR, 10000); 
 
             const prog = document.getElementById('progress');
@@ -73,31 +70,20 @@
 
         function generateAdminQR() {
             const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
-            const timeSlice = Math.floor(nowKst.getTime() / 10000); // 10초 단위 토큰
-            
+            const timeSlice = Math.floor(nowKst.getTime() / 10000); 
             const fakeSig = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2) + "KNYSECURE";
             
-            // 💡 1. 직원이 찍을 엄청 긴 URL 생성
+            // 💡 직원이 스캔했을 때 넘어가는 URL (매우 복잡함)
             const fullUrl = window.location.origin + "/attendance.html?auth_sig=" + fakeSig + "&token=" + timeSlice + "&mode=secure";
+            document.getElementById('debug-url').innerText = "현재 보안 토큰: " + timeSlice; 
             
-            document.getElementById('debug-url').innerText = "현재 코드: " + timeSlice; // 화면에는 토큰 숫자만 깔끔하게 표시
-            
-            // 💡 2. 브라우저 캐시를 무력화하는 무작위 난수(cb) 추가
             const cacheBuster = new Date().getTime() + Math.random();
             const qrApiUrl = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=" + encodeURIComponent(fullUrl) + "&cb=" + cacheBuster;
 
             const qrImg = document.getElementById('qr-image');
-            
-            // 시각적으로 QR이 교체됨을 보여주기 위해 살짝 투명해졌다가 나타남
             qrImg.style.opacity = '0.3';
-            
-            // 이미지 주소 강제 교체
             qrImg.src = qrApiUrl;
-            
-            // 로딩이 완료되면 다시 진해짐
-            qrImg.onload = function() {
-                qrImg.style.opacity = '1';
-            }
+            qrImg.onload = function() { qrImg.style.opacity = '1'; }
         }
     </script>
 </body>
