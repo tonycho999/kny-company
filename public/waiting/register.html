@@ -19,52 +19,85 @@
     </style>
 </head>
 <body>
+
 <div class="wrapper" id="main-content">
     <div id="form-area">
-        <h1>대기 접수 등록</h1>
+        <h1 id="txt-h1">대기 접수 등록</h1>
         <div class="loc-name" id="team-title">📍 행사장 확인 중...</div>
+        
         <form id="waitingForm" onsubmit="handleSubmit(event)">
-            <label>방문자 성명</label>
+            <label id="txt-name-lbl">방문자 성명</label>
             <input type="text" id="name" required placeholder="성함을 입력해주세요">
-            <label>연락처 (하이픈 없이 입력)</label>
+            
+            <label id="txt-phone-lbl">연락처 (하이픈 없이 입력)</label>
             <input type="text" id="phone" required placeholder="01012345678">
-            <label>동반 인원수</label>
+            
+            <label id="txt-count-lbl">동반 인원수</label>
             <input type="number" id="count" min="1" value="1" required>
+            
             <label class="chk-container">
                 <input type="checkbox" id="kakao" checked>
-                <span>카카오톡 알림톡 수신에 동의합니다.</span>
+                <span id="txt-agree">카카오톡 알림톡 수신에 동의합니다.</span>
             </label>
+            
             <button type="submit" id="submitBtn">대기 등록하기</button>
         </form>
     </div>
+
     <div id="error-area" class="error-screen hidden">
-        <h2>🚫 접수 불가 (만료된 QR)</h2>
-        <p style="color:#7f8c8d; font-size:16px; line-height:1.6; word-break:keep-all;">
+        <h2 id="txt-err-title">🚫 접수 불가 (만료된 QR)</h2>
+        <p id="txt-err-desc" style="color:#7f8c8d; font-size:16px; line-height:1.6; word-break:keep-all;">
             해당 QR 코드는 만료되었거나 원격에서 복사된 링크입니다.<br>
             <b>반드시 행사장 입구에 있는 화면의 최신 QR 코드</b>를 실시간으로 스캔하여 접수해 주시기 바랍니다.
         </p>
     </div>
 </div>
+
 <script>
+    // 💡 다국어 사전
+    const i18n = {
+        ko: { title: "KNY Company - 웨이팅 접수", h1: "대기 접수 등록", locLoad: "📍 행사장 확인 중...", nameLbl: "방문자 성명", namePh: "성함을 입력해주세요", phoneLbl: "연락처 (하이픈 없이 입력)", phonePh: "01012345678", countLbl: "동반 인원수", agree: "알림 수신에 동의합니다.", btn: "대기 등록하기", btnIng: "접수 처리 중...", errTitle: "🚫 접수 불가 (만료된 QR)", errDesc: "해당 QR 코드는 만료되었거나 원격에서 복사된 링크입니다.<br><b>반드시 행사장 입구에 있는 화면의 최신 QR 코드</b>를 실시간으로 스캔해 주세요.", alertFail: "등록 실패: ", alertErr: "서버 통신 오류" },
+        en: { title: "KNY Company - Waiting List", h1: "Waiting Registration", locLoad: "📍 Checking location...", nameLbl: "Name", namePh: "Please enter your name", phoneLbl: "Phone Number (No hyphens)", phonePh: "e.g. 01012345678", countLbl: "Number of People", agree: "I agree to receive text notifications.", btn: "Register", btnIng: "Processing...", errTitle: "🚫 Registration Unavailable", errDesc: "This QR code is expired or copied remotely.<br><b>Please scan the latest QR code</b> at the entrance.", alertFail: "Registration failed: ", alertErr: "Server error" },
+        ja: { title: "KNY Company - 順番待ち受付", h1: "順番待ち登録", locLoad: "📍 会場を確認中...", nameLbl: "お名前", namePh: "お名前を入力してください", phoneLbl: "電話番号（ハイフンなし）", phonePh: "例: 09012345678", countLbl: "同伴者数", agree: "通知メッセージの受信に同意します。", btn: "登録する", btnIng: "処理中...", errTitle: "🚫 登録不可（期限切れ）", errDesc: "このQRコードは期限切れ、またはコピーされたリンクです。<br><b>必ず入り口の画面にある最新のQRコード</b>をスキャンしてください。", alertFail: "登録失敗: ", alertErr: "サーバー通信エラー" },
+        zh: { title: "KNY Company - 等候登记", h1: "等候登记", locLoad: "📍 正在确认场地...", nameLbl: "姓名", namePh: "请输入您的姓名", phoneLbl: "联系电话（无连字符）", phonePh: "例: 13812345678", countLbl: "同行人数", agree: "我同意接收通知消息。", btn: "提交登记", btnIng: "处理中...", errTitle: "🚫 无法登记（二维码已过期）", errDesc: "此二维码已过期或为复制的链接。<br>请务必扫描<b>入口屏幕上的最新二维码</b>进行登记。", alertFail: "登记失败: ", alertErr: "服务器通信错误" }
+    };
+
+    let userLang = (navigator.language || navigator.userLanguage || 'en').substring(0, 2);
+    if (!['ko', 'en', 'ja', 'zh'].includes(userLang)) userLang = 'en'; // 기본값 영어
+    const lang = i18n[userLang];
+
     const urlParams = new URLSearchParams(window.location.search);
     const teamName = urlParams.get('team');
     const scanToken = urlParams.get('token'); 
 
     const audioRegistered = new Audio('/sounds/wait_registered.mp3');
+    let audioCtx;
 
     document.addEventListener('DOMContentLoaded', () => {
+        // 텍스트 다국어 적용
+        document.title = lang.title;
+        document.getElementById('txt-h1').innerText = lang.h1;
+        document.getElementById('team-title').innerText = lang.locLoad;
+        document.getElementById('txt-name-lbl').innerText = lang.nameLbl;
+        document.getElementById('name').placeholder = lang.namePh;
+        document.getElementById('txt-phone-lbl').innerText = lang.phoneLbl;
+        document.getElementById('phone').placeholder = lang.phonePh;
+        document.getElementById('txt-count-lbl').innerText = lang.countLbl;
+        document.getElementById('txt-agree').innerText = lang.agree;
+        document.getElementById('submitBtn').innerText = lang.btn;
+        document.getElementById('txt-err-title').innerText = lang.errTitle;
+        document.getElementById('txt-err-desc').innerHTML = lang.errDesc;
+
         if (!teamName || !scanToken) {
             blockAccess();
             return;
         }
 
-        // 💡 [수정] 순수 KST 시간으로 비교. 에러 방지를 위해 5칸(약 50초)으로 넉넉하게 잡습니다.
         const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
         const currentSlice = Math.floor(nowKst.getTime() / 10000);
         const tokenDiff = currentSlice - parseInt(scanToken);
 
         if (isNaN(tokenDiff) || tokenDiff < 0 || tokenDiff > 5) { 
-            console.log("만료 차이:", tokenDiff); // 디버깅용
             blockAccess();
             return;
         }
@@ -77,12 +110,35 @@
         document.getElementById('error-area').classList.remove('hidden');
     }
 
+    // 외국어용 비프음 (Web Audio API)
+    function playFallbackBeep() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = 'sine';
+        osc.frequency.value = 600;
+        osc.start(audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        osc.stop(audioCtx.currentTime + 0.2);
+    }
+
     async function handleSubmit(e) {
         e.preventDefault();
         const btn = document.getElementById('submitBtn');
-        btn.innerText = "접수 처리 중...";
+        btn.innerText = lang.btnIng;
         btn.style.backgroundColor = "#95a5a6";
         btn.disabled = true;
+
+        // 사용자 클릭 시 오디오 권한 획득
+        if (userLang !== 'ko' && !audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
 
         const payload = {
             team_name: teamName,
@@ -101,7 +157,12 @@
             const result = await res.json();
             
             if(res.ok) {
-                try { await audioRegistered.play(); } catch(err) {}
+                // 언어에 따른 소리 재생
+                if (userLang === 'ko') {
+                    try { await audioRegistered.play(); } catch(err) {}
+                } else {
+                    playFallbackBeep();
+                }
                 
                 sessionStorage.setItem('waitlist_id', result.id);
                 sessionStorage.setItem('waitlist_team', teamName);
@@ -110,14 +171,14 @@
                     window.location.href = `/waiting/status.html`;
                 }, 2500); 
             } else {
-                alert(`등록 실패: ${result.error}`);
-                btn.innerText = "대기 등록하기";
+                alert(lang.alertFail + result.error);
+                btn.innerText = lang.btn;
                 btn.style.backgroundColor = "#3498db";
                 btn.disabled = false;
             }
         } catch {
-            alert('서버 통신 오류');
-            btn.innerText = "대기 등록하기";
+            alert(lang.alertErr);
+            btn.innerText = lang.btn;
             btn.style.backgroundColor = "#3498db";
             btn.disabled = false;
         }
