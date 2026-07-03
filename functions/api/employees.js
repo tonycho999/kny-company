@@ -38,9 +38,12 @@ export async function onRequestPut(context) {
 
         if (!id) throw new Error("ID가 필요합니다.");
 
+        // id를 숫자로 변환
+        const numId = parseInt(id, 10);
+
         await context.env.DB.prepare(
             "UPDATE employees SET emp_id = ?, name = ?, phone = ?, team_name = ? WHERE id = ?"
-        ).bind(emp_id, name, phone, team_name || '', id).run();
+        ).bind(emp_id, name, phone, team_name || '', numId).run();
 
         if (team_name && team_name.trim() !== '') {
             await context.env.DB.prepare(`
@@ -55,15 +58,17 @@ export async function onRequestPut(context) {
     }
 }
 
-// 💡 [수정됨] URL에서 직접 ID를 추출하여 확실하게 삭제합니다.
 export async function onRequestDelete(context) {
     try {
         const url = new URL(context.request.url);
-        const id = url.searchParams.get("id");
+        const idParam = url.searchParams.get("id");
         
-        if (!id) throw new Error("삭제할 ID가 전달되지 않았습니다.");
+        if (!idParam) throw new Error("삭제할 ID가 전달되지 않았습니다.");
 
-        await context.env.DB.prepare("DELETE FROM employees WHERE id = ?").bind(id).run();
+        // 💡 문자로 넘어온 ID를 데이터베이스 형식에 맞게 '숫자(Integer)'로 강제 변환합니다.
+        const numId = parseInt(idParam, 10);
+
+        await context.env.DB.prepare("DELETE FROM employees WHERE id = ?").bind(numId).run();
         
         return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } });
     } catch (e) {
