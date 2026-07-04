@@ -19,6 +19,9 @@
         .remain-count { font-size: 64px; color: #e74c3c; font-weight: 900; display: inline-block; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .remain-count.pop { transform: scale(1.4); color: #2ecc71; }
         
+        /* 🚨 추가된 경고 문구 스타일 */
+        .warning-text { margin-top: 15px; font-size: 13px; color: #e67e22; font-weight: bold; line-height: 1.4; background: #fdf2e9; padding: 10px; border-radius: 8px; }
+
         #safety-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(44, 62, 80, 0.95); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; cursor: pointer; text-align: center; }
         #safety-overlay h3 { font-size: 24px; margin-bottom: 15px; color: #f1c40f; }
         #safety-overlay p { font-size: 16px; line-height: 1.6; padding: 0 20px; }
@@ -51,14 +54,18 @@
         <div class="remain-count" id="remainCount">--</div>
         <p style="margin-top: 10px; color:#7f8c8d; font-size:14px;" id="statusMsg">순서를 실시간으로 계산하고 있습니다.</p>
     </div>
+    
+    <div class="warning-text" id="txt-warning">
+        ⚠️ 내 순서가 된 후 3회 이상 호출 시 대기가 자동 취소될 수 있습니다.
+    </div>
 </div>
 
 <script>
     const i18n = {
-        ko: { title: "KNY Company - 대기 현황", overlayTitle: "🔔 소리 알림 켜기", overlayDesc: "고객님의 차례가 되면 <b>음성 안내</b>가 나옵니다.<br>소리를 켜시려면 아래 버튼을 눌러주세요.", overlayBtn: "터치해서 시작하기", sndOn: "소리 켬", sndOff: "소리 끔", locLoad: "📍 행사장 확인 중...", myNum: "내 번호: ", ahead: "내 앞 대기 팀수", calc: "순서를 실시간으로 계산하고 있습니다.", call: "<b style='color:#e74c3c; font-size:20px;'>지금 즉시 입장해 주세요!</b>", done: "입장이 완료되었습니다.", alertErr: "잘못된 접근이거나 데이터가 만료되었습니다." },
-        en: { title: "KNY Company - Waiting Status", overlayTitle: "🔔 Turn on sound alerts", overlayDesc: "You will receive an <b>audio alert</b> when it's your turn.<br>Please tap the button below to turn on the sound.", overlayBtn: "Tap to Start", sndOn: "Sound On", sndOff: "Sound Off", locLoad: "📍 Checking location...", myNum: "My Number: ", ahead: "Teams ahead of me", calc: "Calculating in real-time...", call: "<b style='color:#e74c3c; font-size:20px;'>Please enter immediately!</b>", done: "Entry completed.", alertErr: "Invalid access or data expired." },
-        ja: { title: "KNY Company - 待機状況", overlayTitle: "🔔 音声通知をオンにする", overlayDesc: "順番が来ると<b>音声でお知らせ</b>します。<br>下のボタンをタップして音声をオンにしてください。", overlayBtn: "タップして開始", sndOn: "音声オン", sndOff: "音声オフ", locLoad: "📍 会場を確認中...", myNum: "あなたの番号: ", ahead: "前に待っている組数", calc: "リアルタイムで計算中...", call: "<b style='color:#e74c3c; font-size:20px;'>すぐにご入場ください！</b>", done: "入場が完了しました。", alertErr: "無効なアクセス、またはデータが期限切れです。" },
-        zh: { title: "KNY Company - 等候状态", overlayTitle: "🔔 开启声音提醒", overlayDesc: "轮到您时会有<b>语音提醒</b>。<br>请点击下方按钮开启声音。", overlayBtn: "点击开始", sndOn: "声音开", sndOff: "声音关", locLoad: "📍 正在确认场地...", myNum: "您的号码: ", ahead: "前面等候的组数", calc: "正在实时计算...", call: "<b style='color:#e74c3c; font-size:20px;'>请立即入场！</b>", done: "入场已完成。", alertErr: "无效访问或数据已过期。" }
+        ko: { title: "KNY Company - 대기 현황", overlayTitle: "🔔 소리 알림 켜기", overlayDesc: "고객님의 차례가 되면 <b>음성 안내</b>가 나옵니다.<br>소리를 켜시려면 아래 버튼을 눌러주세요.", overlayBtn: "터치해서 시작하기", sndOn: "소리 켬", sndOff: "소리 끔", locLoad: "📍 행사장 확인 중...", myNum: "내 번호: ", ahead: "내 앞 대기 팀수", calc: "순서를 실시간으로 계산하고 있습니다.", call: "<b style='color:#e74c3c; font-size:20px;'>지금 즉시 입장해 주세요!</b>", done: "입장이 완료되었습니다.", alertErr: "잘못된 접근이거나 데이터가 만료되었습니다.", warning: "⚠️ 내 순서가 된 후 3회 이상 호출 시 대기가 자동 취소될 수 있습니다.", callCount: "현재 호출 횟수:" },
+        en: { title: "KNY Company - Waiting Status", overlayTitle: "🔔 Turn on sound alerts", overlayDesc: "You will receive an <b>audio alert</b> when it's your turn.<br>Please tap the button below to turn on the sound.", overlayBtn: "Tap to Start", sndOn: "Sound On", sndOff: "Sound Off", locLoad: "📍 Checking location...", myNum: "My Number: ", ahead: "Teams ahead of me", calc: "Calculating in real-time...", call: "<b style='color:#e74c3c; font-size:20px;'>Please enter immediately!</b>", done: "Entry completed.", alertErr: "Invalid access or data expired.", warning: "⚠️ Your reservation may be canceled if you do not arrive after 3 calls.", callCount: "Call count:" },
+        ja: { title: "KNY Company - 待機状況", overlayTitle: "🔔 音声通知をオンにする", overlayDesc: "順番が来ると<b>音声でお知らせ</b>します。<br>下のボタンをタップして音声をオンにしてください。", overlayBtn: "タップして開始", sndOn: "音声オン", sndOff: "音声オフ", locLoad: "📍 会場を確認中...", myNum: "あなたの番号: ", ahead: "前に待っている組数", calc: "リアルタイムで計算中...", call: "<b style='color:#e74c3c; font-size:20px;'>すぐにご入場ください！</b>", done: "入場が完了しました。", alertErr: "無効なアクセス、またはデータが期限切れです。", warning: "⚠️ お呼び出しが3回を超えると、自動的にキャンセルされる場合があります。", callCount: "呼び出し回数:" },
+        zh: { title: "KNY Company - 等候状态", overlayTitle: "🔔 开启声音提醒", overlayDesc: "轮到您时会有<b>语音提醒</b>。<br>请点击下方按钮开启声音。", overlayBtn: "点击开始", sndOn: "声音开", sndOff: "声音关", locLoad: "📍 正在确认场地...", myNum: "您的号码: ", ahead: "前面等候的组数", calc: "正在实时计算...", call: "<b style='color:#e74c3c; font-size:20px;'>请立即入场！</b>", done: "入场已完成。", alertErr: "无效访问或数据已过期。", warning: "⚠️ 若呼叫超过3次未到场，您的排队可能被自动取消。", callCount: "当前呼叫次数:" }
     };
 
     let userLang = (navigator.language || navigator.userLanguage || 'en').substring(0, 2);
@@ -68,22 +75,19 @@
     const waitlistId = sessionStorage.getItem('waitlist_id');
     const teamName = sessionStorage.getItem('waitlist_team');
     
-    // 한국어용 MP3 파일
     const audioProgress = new Audio('/sounds/wait_progress.mp3');
     const audioNext = new Audio('/sounds/wait_next.mp3');
     const audioCalled = new Audio('/sounds/wait_called.mp3');
     const audioPing = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA'); 
     
-    // 외국어용 비프음 컨텍스트
     let audioCtx;
-
     let lastRemain = null;
     let lastStatus = 'waiting';
+    let lastCallCount = 0;
     let isAudioOn = true; 
     let isUnlocked = false; 
 
     document.addEventListener('DOMContentLoaded', () => {
-        // 다국어 적용
         document.title = lang.title;
         document.getElementById('txt-overlay-title').innerText = lang.overlayTitle;
         document.getElementById('txt-overlay-desc').innerHTML = lang.overlayDesc;
@@ -93,6 +97,7 @@
         document.getElementById('myNum').innerText = lang.myNum + "--";
         document.getElementById('txt-ahead').innerText = lang.ahead;
         document.getElementById('statusMsg').innerText = lang.calc;
+        document.getElementById('txt-warning').innerText = lang.warning;
 
         if (!waitlistId || !teamName) {
             alert(lang.alertErr);
@@ -138,7 +143,6 @@
         isAudioOn = true;
     }
 
-    // 외국어용 패턴 비프음 재생
     function playBeep(type) {
         if (!audioCtx || audioCtx.state === 'suspended') return;
         const playTone = (freq, st, dur) => {
@@ -177,11 +181,14 @@
             document.getElementById('myNum').innerText = lang.myNum + data.waitingNumber;
             const currentRemain = data.remainTeams;
             const currentStatus = data.status;
+            const currentCallCount = data.callCount || 0; // DB에서 받아온 호출 횟수
             const countEl = document.getElementById('remainCount');
 
-            if (currentStatus === 'called' && lastStatus !== 'called') {
+            // 호출 상태이면서, 처음 호출되었거나 호출 횟수가 늘어났을 때 알림
+            if (currentStatus === 'called' && (lastStatus !== 'called' || currentCallCount > lastCallCount)) {
                 document.body.classList.add('flash-red');
-                document.getElementById('statusMsg').innerHTML = lang.call;
+                // 화면에 호출 횟수 표시
+                document.getElementById('statusMsg').innerHTML = `${lang.call}<br><span style='color:#34495e; font-size:16px; font-weight:bold;'>(${lang.callCount} <span style='color:#e74c3c'>${currentCallCount}</span>/3)</span>`;
                 triggerAudio('called');
             }
             else if (currentStatus === 'waiting' && lastRemain !== null && currentRemain < lastRemain) {
@@ -196,9 +203,11 @@
                     document.body.classList.remove('flash-green');
                 }, 600);
             }
+            
             countEl.innerText = currentRemain;
             lastRemain = currentRemain;
             lastStatus = currentStatus;
+            lastCallCount = currentCallCount;
 
             if (currentStatus === 'completed') {
                 document.getElementById('statusMsg').innerText = lang.done;
