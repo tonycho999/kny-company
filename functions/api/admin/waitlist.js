@@ -1,14 +1,13 @@
 export async function onRequestGet(context) {
     const url = new URL(context.request.url);
     const teamName = url.searchParams.get("teamName");
-    const targetDate = url.searchParams.get("date"); // 💡 날짜값을 받아옵니다.
+    const targetDate = url.searchParams.get("date"); 
 
     if (!teamName || !targetDate) {
         return new Response(JSON.stringify({ error: "팀 이름과 날짜 파라미터가 필요합니다." }), { status: 400 });
     }
 
     try {
-        // 💡 해당 팀 + 해당 날짜의 대기열만 뽑아냅니다. (DB의 created_at 시간을 기준으로 날짜만 자름)
         const query = `
             SELECT * FROM waitlist 
             WHERE team_name = ? AND date(created_at, '+9 hours') = ? 
@@ -33,10 +32,24 @@ export async function onRequestPut(context) {
             return new Response(JSON.stringify({ error: "필수 파라미터 누락" }), { status: 400 });
         }
 
-        // 상태 업데이트
-        await context.env.DB.prepare("UPDATE waitlist SET status = ? WHERE id = ?").bind(status, id).run();
+        // 💡 [핵심 수정 부분] 상태가 'called'(호출)일 때만 call_count를 1씩 증가시킵니다.
+        // IFNULL을 써서 혹시 기존 값이 비어있더라도 0으로 인식하고 1을 더하도록 안전하게 처리했습니다.
+        if (status === 'called') {
+            await context.env.DB.prepare(`
+                UPDATE waitlist 
+                SET status = ?, call_count = IFNULL(call_count, 0) + 1 
+                WHERE id = ?
+            `).bind(status, id).run();
+        } else {
+            // 완료, 취소 등 다른 상태일 때는 숫자(call_count)는 건드리지 않고 상태만 변경합니다.
+            await context.env.DB.prepare(`
+                UPDATE waitlist 
+                SET status = ? 
+                WHERE id = ?
+            `).bind(status, id).run();
+        }
 
-        // 💡 [카카오톡 알림톡 발송 기능 확장 포인트]
+        // [카카오톡 알림톡 발송 기능 확장 포인트]
         // 만약 상태가 'called'(호출됨)로 바뀌었고 phone 정보가 넘어왔다면, 여기서 team_settings를 조회하여 카톡 발송 로직을 탈 수 있습니다.
         /*
         if (status === 'called' && phone && team_name) {
