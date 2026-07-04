@@ -16,16 +16,16 @@ export async function onRequest(context) {
                 return Response.json({ error: "필수 정보가 없습니다." }, { status: 400 });
             }
 
-            // 1. 현재 접속한 고객의 대기 정보(내 번호, 내 상태) 조회
+            // 1. 🛠️ 수정됨: DB에서 'call_count' 값도 같이 가져오도록 추가
             const myInfo = await env.DB.prepare(
-                "SELECT waiting_number, status FROM waitlist WHERE id = ? AND team_name = ?"
+                "SELECT waiting_number, status, call_count FROM waitlist WHERE id = ? AND team_name = ?"
             ).bind(id, teamName).first();
 
             if (!myInfo) {
                 return Response.json({ error: "대기 정보를 찾을 수 없습니다." }, { status: 404 });
             }
 
-            // 2. 내 앞에 대기 중인 사람(status가 'waiting'이고, 내 번호보다 작은 사람) 수 계산
+            // 2. 내 앞에 대기 중인 사람 수 계산
             let remainTeams = 0;
             if (myInfo.status === 'waiting') {
                 const countResult = await env.DB.prepare(
@@ -35,11 +35,12 @@ export async function onRequest(context) {
                 remainTeams = countResult.remain || 0;
             }
 
-            // 프론트엔드로 필요한 데이터만 응답
+            // 3. 🛠️ 수정됨: 프론트엔드로 callCount 데이터(없으면 0)를 함께 응답
             return Response.json({
                 waitingNumber: myInfo.waiting_number,
                 status: myInfo.status,
-                remainTeams: remainTeams
+                remainTeams: remainTeams,
+                callCount: myInfo.call_count || 0
             });
         }
 
