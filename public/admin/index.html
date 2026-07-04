@@ -373,9 +373,20 @@
         } catch (e) { alert('서버 통신 오류'); }
     }
 
-    async function deletePortfolio(id) {
+async function deletePortfolio(id) {
         if(!confirm('홈페이지에서 이 행사 실적을 내리시겠습니까?')) return;
-        try { await fetch('/api/portfolios', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }); loadPortfolios(); } catch(e) {}
+        try { 
+            // 💡 수정됨: 백엔드가 원하는 대로 주소창(?id=)에 번호를 달아서 보냅니다.
+            const res = await fetch(`/api/portfolios?id=${id}`, { method: 'DELETE' }); 
+            if (res.ok) {
+                alert('게시물이 삭제되었습니다.');
+                loadPortfolios(); 
+            } else {
+                alert('삭제 처리 중 오류가 발생했습니다.');
+            }
+        } catch(e) { 
+            alert('서버 통신 오류가 발생했습니다.');
+        }
     }
 </script>
 </body>
