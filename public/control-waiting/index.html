@@ -13,7 +13,6 @@
         label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 14px; }
         select, input[type="date"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; margin-bottom: 15px; box-sizing: border-box; }
         
-        /* 💡 추가: 달력과 행사장 선택을 나란히 배치 */
         .filter-group { display: flex; gap: 15px; margin-bottom: 15px; }
         .filter-group > div { flex: 1; }
 
@@ -38,6 +37,10 @@
         .btn-action { padding: 8px 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; color: white; }
         .btn-call { background: #2ecc71; margin-right: 5px; }
         .btn-complete { background: #95a5a6; }
+        
+        /* 💡 3회 초과 비활성화 버튼 스타일 */
+        .btn-call:disabled { background: #bdc3c7; cursor: not-allowed; }
+
         @media (max-width: 600px) { th:nth-child(3), td:nth-child(3) { display: none; } }
     </style>
 </head>
@@ -49,7 +52,6 @@
         <div class="filter-group">
             <div>
                 <label>📅 날짜 선택</label>
-                <!-- 💡 추가: 달력 부활 -->
                 <input type="date" id="date-selector" onchange="handleFilterChange()">
             </div>
             <div>
@@ -100,7 +102,6 @@
     let selectedTeamName = "";
 
     document.addEventListener('DOMContentLoaded', () => { 
-        // 💡 오늘 날짜로 기본 세팅
         const todayKst = new Date(Date.now() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
         document.getElementById('date-selector').value = todayKst;
         loadTeams(); 
@@ -121,7 +122,6 @@
         document.getElementById('num-maxwait').disabled = !document.getElementById('chk-maxwait').checked;
     }
 
-    // 💡 날짜가 바뀌거나 팀이 바뀔 때 실행되는 함수
     function handleFilterChange() {
         selectedTeamName = document.getElementById('team-selector').value;
         const qrLink = document.getElementById('qr-link');
@@ -186,7 +186,6 @@
         if(!selectedTeamName || !selectedDate) return;
 
         try {
-            // 💡 서버에 요일 정보를 파라미터로 전송
             const res = await fetch(`/api/admin/waitlist?teamName=${encodeURIComponent(selectedTeamName)}&date=${selectedDate}`);
             const list = await res.json();
 
@@ -196,12 +195,30 @@
             }
             document.getElementById('waitlist-tbody').innerHTML = list.map(item => {
                 const maskedPhone = item.phone.length === 11 ? `${item.phone.substring(0,3)}-****-${item.phone.substring(7,11)}` : item.phone;
-                let statusBadge = item.status === 'waiting' ? '<span class="status-waiting">대기중</span>' : item.status === 'called' ? '<span class="status-called">호출됨</span>' : '<span class="status-completed">입장완료</span>';
+                
+                // 💡 호출 횟수 변수 추출 (없으면 0)
+                const callCount = item.call_count || 0;
+                
+                // 💡 상태 뱃지에 횟수 표시 적용
+                let statusBadge = item.status === 'waiting' ? '<span class="status-waiting">대기중</span>' : 
+                                  item.status === 'called' ? `<span class="status-called">호출됨 <span style="font-size:13px; color:#e67e22;">(${callCount}/3)</span></span>` : 
+                                  '<span class="status-completed">입장완료</span>';
+                
+                // 💡 3회 이상 호출 시 버튼 비활성화 (disabled 속성 추가)
+                const isCallDisabled = callCount >= 3 ? 'disabled' : '';
+                const callBtnText = callCount >= 3 ? '호출초과' : '호출';
+
                 return `<tr>
                     <td style="font-weight:bold; font-size:18px;">${item.waiting_number}</td>
                     <td><div style="font-weight:bold;">${item.name}</div><div style="font-size:12px; color:#7f8c8d;">${maskedPhone}</div></td>
-                    <td>${item.count}명</td><td>${statusBadge}</td>
-                    <td>${item.status !== 'completed' ? `<button class="btn-action btn-call" onclick="callCustomer(${item.id}, '${item.phone}')">호출</button><button class="btn-action btn-complete" onclick="completeCustomer(${item.id})">완료</button>` : '-'}</td>
+                    <td>${item.count}명</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        ${item.status !== 'completed' ? `
+                            <button class="btn-action btn-call" ${isCallDisabled} onclick="callCustomer(${item.id}, '${item.phone}')">${callBtnText}</button>
+                            <button class="btn-action btn-complete" onclick="completeCustomer(${item.id})">완료</button>
+                        ` : '-'}
+                    </td>
                 </tr>`;
             }).join('');
         } catch(e) {}
