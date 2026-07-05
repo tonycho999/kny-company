@@ -147,6 +147,7 @@
         document.getElementById('search-date-att').valueAsDate = new Date();
         setExportRange('day'); 
         loadEmployees();
+        searchAttendance(); // 💡 서버에서 오늘 날짜 근태 명단을 직접 가져오도록 수정
         loadPortfolios();
     });
 
@@ -180,10 +181,9 @@
             allEmployees = await res.json();
             updateTeamFilter();
             renderEmployeeTable(allEmployees);
-            renderAttendanceTable(allEmployees);
+            // 💡 여기서 근태 테이블(renderAttendanceTable)을 부르던 부분 삭제 (searchAttendance가 대신 담당)
         } catch(e) { 
             document.getElementById('emp-tbody').innerHTML = '<tr><td colspan="5" style="color:red;">데이터 로딩 실패</td></tr>'; 
-            document.getElementById('att-tbody').innerHTML = '<tr><td colspan="5" style="color:red;">데이터 로딩 실패</td></tr>'; 
         }
     }
 
@@ -206,38 +206,29 @@
         renderEmployeeTable(filtered);
     }
 
-    function searchAttendance() {
+    // 💡 클라이언트 필터링 대신, 서버에 해당 날짜의 근태 기록을 정확히 요청하도록 수정
+    async function searchAttendance() {
         const dateVal = document.getElementById('search-date-att').value;
         const teamVal = document.getElementById('search-team-att').value;
         const keyword = document.getElementById('search-keyword-att').value.toLowerCase();
 
-        const filtered = allEmployees.filter(emp => {
-            let dateMatch = true;
-            if (dateVal && emp.check_in_time) {
-                // 🛠️ 시간 누적으로 인해 쉼표가 있을 수 있으므로 첫 번째 날짜 기준(split)으로 검색
-                const firstCheckIn = emp.check_in_time.split(',')[0].trim();
-                const checkInDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(firstCheckIn));
-                dateMatch = (checkInDate === dateVal);
-            } else if (dateVal && !emp.check_in_time) { 
-                dateMatch = false; 
-            }
+        if (!dateVal) return;
 
-            const teamMatch = !teamVal || emp.team_name === teamVal;
-            const keywordMatch = !keyword || (emp.name && emp.name.toLowerCase().includes(keyword));
+        try {
+            const res = await fetch(`/api/attendance?date=${dateVal}`);
+            const attendanceData = await res.json();
 
-            return dateMatch && teamMatch && keywordMatch;
-        });
-        renderAttendanceTable(filtered);
-    }
+            // 서버에서 가져온 출석부 명단에서 행사장(팀)과 이름 검색어만 화면단에서 필터링
+            const filtered = attendanceData.filter(emp => {
+                const teamMatch = !teamVal || emp.team_name === teamVal;
+                const keywordMatch = !keyword || (emp.name && emp.name.toLowerCase().includes(keyword));
+                return teamMatch && keywordMatch;
+            });
 
-    // 🛠️ 여러 개의 시간이 들어와도 에러 없이 한국 시간으로 깔끔하게 변환해 주는 헬퍼 함수
-    function formatMultiTimes(timeStr) {
-        if (!timeStr) return '미출근';
-        const times = timeStr.split(',');
-        return times.map(t => {
-            try { return new Date(t.trim()).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute:'2-digit' }); }
-            catch(e) { return '-'; }
-        }).join(', '); // 쉼표와 띄어쓰기로 예쁘게 구분
+            renderAttendanceTable(filtered);
+        } catch(e) {
+            document.getElementById('att-tbody').innerHTML = '<tr><td colspan="5" style="color:red;">데이터 로딩 실패</td></tr>';
+        }
     }
 
     function resetEmpSearch() {
@@ -246,11 +237,13 @@
         renderEmployeeTable(allEmployees);
     }
 
+    // 💡 초기화 후 서버에서 다시 가져오도록 수정
     function resetAttSearch() {
-        document.getElementById('search-date-att').value = '';
+        const todayKst = new Date(Date.now() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+        document.getElementById('search-date-att').value = todayKst;
         document.getElementById('search-team-att').value = '';
         document.getElementById('search-keyword-att').value = '';
-        renderAttendanceTable(allEmployees);
+        searchAttendance();
     }
 
     function renderEmployeeTable(data) {
@@ -270,16 +263,18 @@
         `).join('');
     }
 
+    // 💡 formatMultiTimes를 쓰지 않고 서버에서 넘어온 clock_in, clock_out 값을 바로 사용하도록 수정
     function renderAttendanceTable(data) {
         const tbody = document.getElementById('att-tbody');
         if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="padding:30px;">조건에 맞는 직원이 없습니다.</td></tr>'; return; }
+        
         tbody.innerHTML = data.map(emp => `
             <tr>
                 <td style="font-weight:bold;">${emp.emp_id || '-'}</td>
                 <td>${emp.name}</td>
                 <td>${emp.team_name}</td>
-                <td style="color:#2ecc71; font-weight:bold;">${formatMultiTimes(emp.check_in_time)}</td>
-                <td style="color:#e74c3c; font-weight:bold;">${emp.check_out_time ? formatMultiTimes(emp.check_out_time) : '-'}</td>
+                <td style="color:#2ecc71; font-weight:bold;">${emp.clock_in ? emp.clock_in : '미출근'}</td>
+                <td style="color:#e74c3c; font-weight:bold;">${emp.clock_out ? emp.clock_out : '-'}</td>
             </tr>
         `).join('');
     }
@@ -373,10 +368,9 @@
         } catch (e) { alert('서버 통신 오류'); }
     }
 
-async function deletePortfolio(id) {
+    async function deletePortfolio(id) {
         if(!confirm('홈페이지에서 이 행사 실적을 내리시겠습니까?')) return;
         try { 
-            // 💡 수정됨: 백엔드가 원하는 대로 주소창(?id=)에 번호를 달아서 보냅니다.
             const res = await fetch(`/api/portfolios?id=${id}`, { method: 'DELETE' }); 
             if (res.ok) {
                 alert('게시물이 삭제되었습니다.');
