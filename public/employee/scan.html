@@ -171,9 +171,11 @@
                 const result = await response.json();
                 
                 if (response.ok) {
-                    const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
-                    const hours = String(nowKst.getHours()).padStart(2, '0');
-                    const minutes = String(nowKst.getMinutes()).padStart(2, '0');
+                    // 💡 수정된 부분: 기기 설정에 상관없이 안전하게 한국 시간 추출
+                    const kstDate = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Seoul"}));
+                    const hours = String(kstDate.getHours()).padStart(2, '0');
+                    const minutes = String(kstDate.getMinutes()).padStart(2, '0');
+                    
                     const typeText = type === 'in' ? '출근' : '퇴근';
                     try {
                         const audio = type === 'in' ? new Audio('/sounds/clock_in.mp3') : new Audio('/sounds/clock_out.mp3');
