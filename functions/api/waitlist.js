@@ -1,79 +1,82 @@
-export async function onRequestGet(context) {
-    const url = new URL(context.request.url);
-    const teamName = url.searchParams.get("teamName");
-    const targetDate = url.searchParams.get("date"); 
+export async function onRequest(context) {
+    const { request, env } = context;
+    const method = request.method;
 
-    if (!teamName || !targetDate) {
-        return new Response(JSON.stringify({ error: "팀 이름과 날짜 파라미터가 필요합니다." }), { status: 400 });
-    }
+    if (!env.DB) return Response.json({ error: "DB 오류" }, { status: 500 });
 
     try {
-        const query = `
-            SELECT * FROM waitlist 
-            WHERE team_name = ? AND date(created_at, '+9 hours') = ? 
-            ORDER BY waiting_number ASC
-        `;
-        
-        const { results } = await context.env.DB.prepare(query).bind(teamName, targetDate).all();
-        
-        return new Response(JSON.stringify(results), { 
-            headers: { 'Content-Type': 'application/json' } 
-        });
-    } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500 });
-    }
-}
+        if (method === "POST") {
+            const { team_name, name, phone, count, kakao_enabled } = await request.json();
 
-export async function onRequestPut(context) {
-    try {
-        const { id, status, phone, team_name } = await context.request.json();
-        
-        if (!id || !status) {
-            return new Response(JSON.stringify({ error: "필수 파라미터 누락" }), { status: 400 });
-        }
-
-        // 💡 1. 상태 업데이트 및 호출 횟수(call_count) 증가
-        if (status === 'called') {
-            await context.env.DB.prepare(`
-                UPDATE waitlist 
-                SET status = ?, call_count = IFNULL(call_count, 0) + 1 
-                WHERE id = ?
-            `).bind(status, id).run();
-        } else {
-            await context.env.DB.prepare(`
-                UPDATE waitlist 
-                SET status = ? 
-                WHERE id = ?
-            `).bind(status, id).run();
-        }
-
-        // 💡 2. 카카오톡 알림톡 발송 (상태가 '호출됨'으로 바뀌었을 때만)
-        if (status === 'called' && phone && team_name) {
-            // 행사장의 카카오톡 사용 설정 확인
-            const settings = await context.env.DB.prepare("SELECT kakao_use FROM team_settings WHERE team_name = ?").bind(team_name).first();
+            // 1. 설정 검사 (최대 대기 인원 제한 확인)
+            const settings = await env.DB.prepare("SELECT * FROM team_settings WHERE team_name = ?").bind(team_name).first();
             
-            // 고객의 정보(이름, 대기번호, 인원수, 카톡 수신 동의 여부) 조회
-            const customer = await context.env.DB.prepare("SELECT name, waiting_number, count, kakao_enabled FROM waitlist WHERE id = ?").bind(id).first();
-
-            // 행사장 설정 ON & 고객 동의 ON 일 때만 발송
-            if (settings && settings.kakao_use === 1 && customer && customer.kakao_enabled === 1) {
+            if (settings && settings.max_wait_use === 1) {
+                // 현재 대기 중인 사람 수 계산 (오늘 날짜 기준)
+                const currentWaiting = await env.DB.prepare(`
+                    SELECT SUM(count) as totalPeople FROM waitlist 
+                    WHERE team_name = ? AND status = 'waiting' 
+                    AND date(created_at, '+9 hours') = date('now', '+9 hours')
+                `).bind(team_name).first();
                 
+                const totalCurrent = (currentWaiting && currentWaiting.totalPeople) ? currentWaiting.totalPeople : 0;
+                
+                if ((totalCurrent + count) > settings.max_wait_count) {
+                    return Response.json({ error: `접수 마감 (현재 최대 ${settings.max_wait_count}명까지만 대기 가능합니다.)` }, { status: 400 });
+                }
+            }
+
+            // 2. 어뷰징 방지
+            const exist = await env.DB.prepare(
+                "SELECT * FROM waitlist WHERE team_name = ? AND phone = ? AND status = 'waiting' AND date(created_at, '+9 hours') = date('now', '+9 hours')"
+            ).bind(team_name, phone).first();
+            if (exist) return Response.json({ error: "이미 대기 등록된 연락처입니다." }, { status: 400 });
+
+            // 3. 날짜별 대기 번호 부여 로직 및 내 앞 대기팀 수 계산
+            const maxNumberResult = await env.DB.prepare(`
+                SELECT MAX(waiting_number) as maxNum, COUNT(id) as waitCount 
+                FROM waitlist 
+                WHERE team_name = ? AND date(created_at, '+9 hours') = date('now', '+9 hours')
+            `).bind(team_name).first();
+            
+            let nextWaitingNumber = 1;
+            let teamsAhead = 0; // 내 앞 대기팀 수
+            
+            if (maxNumberResult && maxNumberResult.maxNum !== null) {
+                nextWaitingNumber = maxNumberResult.maxNum + 1;
+                // 현재 대기 중인(waiting) 사람만 카운트
+                const aheadCount = await env.DB.prepare(
+                    "SELECT COUNT(*) as cnt FROM waitlist WHERE team_name = ? AND status = 'waiting' AND date(created_at, '+9 hours') = date('now', '+9 hours')"
+                ).bind(team_name).first();
+                teamsAhead = aheadCount ? aheadCount.cnt : 0;
+            }
+
+            // 4. 저장
+            const insertResult = await env.DB.prepare(`
+                INSERT INTO waitlist (team_name, name, phone, count, kakao_enabled, waiting_number, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'waiting')
+                RETURNING id
+            `).bind(team_name, name, phone, count, kakao_enabled, nextWaitingNumber).first();
+
+            // 💡 5. 카카오톡 알림톡 발송 (행사장이 카톡 사용 설정 & 손님이 수신 동의한 경우)
+            if (settings && settings.kakao_use === 1 && kakao_enabled === 1) {
+                // 비즈엠 계정 아이디 (🔥스윗트래커 비즈엠 로그인 아이디를 여기에 반드시 입력하세요!)
                 const BIZM_USERID = "knycompany"; 
                 
-                // 고객 전화번호 국제규격 변환 (010 -> 8210)
+                // 고객 폰 번호의 하이픈 제거 및 국제번호 변환 (01012345678 -> 821012345678)
                 let cleanPhone = phone.replace(/-/g, '');
                 if (cleanPhone.startsWith('0')) {
                     cleanPhone = '82' + cleanPhone.substring(1);
                 }
-
-                // 템플릿 변수에 맞게 메시지 조합
-                const kakaoMsg = `${customer.name}님, 곧 입장 차례입니다!\n\n지금 바로 행사장 입구(안내데스크)로 와주시기 바랍니다.\n\n■ 대기 번호: ${customer.waiting_number}\n■ 입장 인원: ${customer.count}명\n\n※ 주의사항\n알림을 받으신 후 5분 이내에 입구에 안 계실 경우, 다음 대기자에게 순서가 넘어가 자동 취소될 수 있으니 신속히 이동해 주세요!`;
+                
+                // 알림톡 템플릿 변수에 맞게 메시지 구성
+                const kakaoMsg = `${name}님, 현장 대기 접수가 완료되었습니다.\n\n■ 대기 번호: ${nextWaitingNumber}\n■ 내 앞 대기: ${teamsAhead}팀\n■ 대기 인원: ${count}명\n\n입장 차례가 다가오면 다시 카카오톡으로 알려드립니다. 행사장 주변에서 대기해 주시기 바랍니다.\n\n※ 대기 시간이 길어질 수 있으며, 마감 시간 임박 시 입장이 제한될 수 있습니다.`;
 
                 const payload = [{
-                    "message_type": "at",
+                    "message_type": "at", // at: 알림톡
                     "phn": cleanPhone,
-                    "profile": "e58dde367b164d7ad7b421cf0e15902ec3f244e2",
-                    "tmplId": "WAIT_CALL_01",
+                    "profile": "e58dde367b164d7ad7b421cf0e15902ec3f244e2", // 발신프로필키
+                    "tmplId": "WAIT_REG_01", // 템플릿코드
                     "msg": kakaoMsg,
                     "reserveDt": "00000000000000" // 즉시 발송
                 }];
@@ -88,14 +91,15 @@ export async function onRequestPut(context) {
                         body: JSON.stringify(payload)
                     });
                 } catch (e) {
-                    console.error("호출 알림톡 실패", e);
-                    // 실패해도 DB 처리에는 영향을 주지 않도록 무시
+                    console.error("접수 알림톡 실패", e);
+                    // 실패해도 대기 접수는 정상 처리되도록 에러 무시
                 }
             }
-        }
 
-        return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' } });
+            return Response.json({ success: true, id: insertResult.id });
+        }
+        return new Response("Method Not Allowed", { status: 405 });
     } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+        return Response.json({ error: e.message }, { status: 500 });
     }
 }
