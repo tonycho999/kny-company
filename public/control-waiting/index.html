@@ -15,12 +15,10 @@
         
         .filter-group { display: flex; gap: 15px; margin-bottom: 15px; }
         .filter-group > div { flex: 1; }
-
         .settings-area { background: #eef2f5; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #dcdde1; display: none; }
         .settings-area.active { display: block; }
         .setting-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
         .setting-row input[type="number"] { width: 80px; padding: 8px; border-radius: 6px; border: 1px solid #ccc; text-align: center; }
-        .btn-save-settings { background: #2ecc71; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; }
 
         .btn-qr { display: block; text-align: center; background: #2c3e50; color: white; padding: 15px; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px; transition: 0.2s; }
         .btn-qr:hover { background: #34495e; }
@@ -40,7 +38,6 @@
         
         /* 💡 3회 초과 비활성화 버튼 스타일 */
         .btn-call:disabled { background: #bdc3c7; cursor: not-allowed; }
-
         @media (max-width: 600px) { th:nth-child(3), td:nth-child(3) { display: none; } }
     </style>
 </head>
@@ -63,17 +60,23 @@
         </div>
         
         <div id="settings-area" class="settings-area">
-            <div style="font-weight:bold; margin-bottom:10px; color:#34495e;">⚙️ 행사장 운영 설정</div>
+            <div style="font-weight:bold; margin-bottom:10px; color:#34495e;">⚙️ 행사장 운영 설정 <span id="save-status" style="font-size:12px; color:#27ae60; margin-left:10px; display:none;">(자동 저장됨)</span></div>
+            
             <div class="setting-row">
-                <input type="checkbox" id="chk-kakao">
-                <label for="chk-kakao" style="display:inline; margin:0;">카카오톡 알림톡 발송 기능 사용</label>
+                <!-- 💡 클릭하는 순간 자동 저장되도록 onchange 추가 -->
+                <input type="checkbox" id="chk-kakao" onchange="autoSaveSettings()">
+                <label for="chk-kakao" style="display:inline; margin:0; cursor:pointer;">카카오톡 알림톡 발송 기능 사용</label>
             </div>
+            
             <div class="setting-row">
-                <input type="checkbox" id="chk-maxwait" onchange="toggleMaxInput()">
-                <label for="chk-maxwait" style="display:inline; margin:0;">최대 웨이팅 인원 제한 사용 : </label>
-                <input type="number" id="num-maxwait" min="1" value="50" disabled> 명 까지만 받기
+                <!-- 💡 클릭하는 순간 입력칸 제어 및 자동 저장되도록 추가 -->
+                <input type="checkbox" id="chk-maxwait" onchange="toggleMaxInputAndSave()">
+                <label for="chk-maxwait" style="display:inline; margin:0; cursor:pointer;">최대 웨이팅 인원 제한 사용 : </label>
+                
+                <!-- 💡 숫자를 타이핑하고 나서(focus를 잃을 때) 자동 저장 -->
+                <input type="number" id="num-maxwait" min="1" value="50" disabled onchange="autoSaveSettings()"> 명 까지만 받기
             </div>
-            <button class="btn-save-settings" onclick="saveSettings()">설정 저장하기</button>
+            <!-- 저장 버튼 완전 삭제 -->
         </div>
 
         <a href="#" id="qr-link" onclick="openCustomerQR(); return false;" class="btn-qr disabled">📺 입구 고객용 QR 스크린 띄우기 (클릭)</a>
@@ -100,6 +103,7 @@
 <script>
     let refreshInterval;
     let selectedTeamName = "";
+    let saveTimeout; // 자동저장 디바운스용
 
     document.addEventListener('DOMContentLoaded', () => { 
         const todayKst = new Date(Date.now() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
@@ -118,8 +122,10 @@
         } catch (e) {}
     }
 
-    function toggleMaxInput() {
+    // 인원 제한 체크 시 입력칸 활성화 후 자동저장
+    function toggleMaxInputAndSave() {
         document.getElementById('num-maxwait').disabled = !document.getElementById('chk-maxwait').checked;
+        autoSaveSettings();
     }
 
     function handleFilterChange() {
@@ -151,25 +157,35 @@
             document.getElementById('chk-kakao').checked = (data.kakao_use === 1);
             document.getElementById('chk-maxwait').checked = (data.max_wait_use === 1);
             document.getElementById('num-maxwait').value = data.max_wait_count || 50;
-            toggleMaxInput();
+            document.getElementById('num-maxwait').disabled = !data.max_wait_use;
         } catch(e) {}
     }
 
-    async function saveSettings() {
+    // 💡 자동 저장 함수
+    async function autoSaveSettings() {
+        if (!selectedTeamName) return;
+
         const payload = {
             team_name: selectedTeamName,
             kakao_use: document.getElementById('chk-kakao').checked ? 1 : 0,
             max_wait_use: document.getElementById('chk-maxwait').checked ? 1 : 0,
             max_wait_count: parseInt(document.getElementById('num-maxwait').value) || 50
         };
+
         try {
             const res = await fetch('/api/admin/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            if (res.ok) alert('설정이 저장되었습니다.');
-        } catch(e) { alert('설정 저장 실패'); }
+            if (res.ok) {
+                // 저장 성공 시 "자동 저장됨" 메시지 1초간 깜빡임
+                const statusSpan = document.getElementById('save-status');
+                statusSpan.style.display = 'inline';
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => { statusSpan.style.display = 'none'; }, 1500);
+            }
+        } catch(e) { console.log('자동저장 실패'); }
     }
 
     function openCustomerQR() {
@@ -193,18 +209,15 @@
                 document.getElementById('waitlist-tbody').innerHTML = '<tr><td colspan="5" style="padding:30px; color:#7f8c8d;">해당 날짜에 대기열이 없습니다.</td></tr>';
                 return;
             }
+
             document.getElementById('waitlist-tbody').innerHTML = list.map(item => {
                 const maskedPhone = item.phone.length === 11 ? `${item.phone.substring(0,3)}-****-${item.phone.substring(7,11)}` : item.phone;
                 
-                // 💡 호출 횟수 변수 추출 (없으면 0)
                 const callCount = item.call_count || 0;
-                
-                // 💡 상태 뱃지에 횟수 표시 적용
                 let statusBadge = item.status === 'waiting' ? '<span class="status-waiting">대기중</span>' : 
                                   item.status === 'called' ? `<span class="status-called">호출됨 <span style="font-size:13px; color:#e67e22;">(${callCount}/3)</span></span>` : 
                                   '<span class="status-completed">입장완료</span>';
                 
-                // 💡 3회 이상 호출 시 버튼 비활성화 (disabled 속성 추가)
                 const isCallDisabled = callCount >= 3 ? 'disabled' : '';
                 const callBtnText = callCount >= 3 ? '호출초과' : '호출';
 
