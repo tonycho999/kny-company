@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KNY Company - 실시간 보안 QR</title>
     
+    <!-- ⭐️ [신규 추가] 외부 서버 없이 QR을 직접 그리는 라이브러리 추가 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
     <script>
         const urlParamsSec = new URLSearchParams(window.location.search);
         const adminToken = urlParamsSec.get('admin_token');
@@ -23,13 +26,15 @@
             window.stop();
         }
     </script>
-
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; background-color: #2c3e50; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
         .qr-container { background: white; padding: 40px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); max-width: 450px; width: 100%; margin: 20px; }
         h1 { color: #2c3e50; font-size: 28px; margin-bottom: 5px; font-weight: bold; }
         .team-tag { color: #3498db; font-size: 20px; font-weight: bold; margin-bottom: 20px; }
-        #qr-image { width: 250px; height: 250px; margin: 15px 0; }
+        
+        /* ⭐️ [수정] img 태그 대신 div에 QR을 그립니다 */
+        #qr-image { width: 250px; height: 250px; margin: 15px auto; }
+        
         .timer-bar { width: 100%; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; margin-top: 20px; }
         .timer-fill { height: 100%; width: 100%; background: #e74c3c; transform-origin: left; animation: countdown 10s linear infinite; }
         .notice { color: #7f8c8d; font-size: 14px; margin-top: 15px; font-weight: 500; }
@@ -41,16 +46,19 @@
         <h1>대기 접수 QR 코드</h1>
         <div class="team-tag" id="team-title">📍 행사장 확인 중...</div>
         
-        <img id="qr-image" src="" alt="보안 QR코드">
+        <!-- ⭐️ [수정] <img> 태그 대신 QR이 그려질 <div>로 변경 -->
+        <div id="qr-image"></div>
         
         <div class="timer-bar">
             <div class="timer-fill" id="progress"></div>
         </div>
         <p class="notice">⚠️ 원격 접수 방지를 위해 10초마다 코드가 변경됩니다.<br>카메라 앱으로 스캔 후 즉시 접수해 주세요.</p>
     </div>
+
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const teamName = urlParams.get('team');
+        let qrcode = null; // QR 객체를 저장할 전역 변수
 
         document.addEventListener('DOMContentLoaded', () => {
             if (!teamName) {
@@ -59,6 +67,15 @@
             }
             document.getElementById('team-title').innerText = `📍 ${decodeURIComponent(teamName)}`;
             
+            // ⭐️ QR 생성 객체 초기화 (최초 1회)
+            qrcode = new QRCode(document.getElementById("qr-image"), {
+                width: 250,
+                height: 250,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+
             generateSecureQR();
             setInterval(generateSecureQR, 10000);
 
@@ -71,14 +88,17 @@
         });
 
         function generateSecureQR() {
-            // 💡 [수정] 순수 KST 시간으로만 토큰 생성
+            // 순수 KST 시간으로만 토큰 생성
             const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
             const timeSlice = Math.floor(nowKst.getTime() / 10000);
-
             const fakeSig = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
             const targetUrl = `${window.location.origin}/waiting/register.html?auth_sig=${fakeSig}&team=${encodeURIComponent(teamName)}&token=${timeSlice}&secure_mode=active`;
             
-            document.getElementById('qr-image').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(targetUrl)}`;
+            // ⭐️ [수정] 외부 API 서버 요청 대신, 직접 최신 데이터로 QR 갱신
+            if(qrcode) {
+                qrcode.clear(); 
+                qrcode.makeCode(targetUrl); 
+            }
         }
     </script>
 </body>
