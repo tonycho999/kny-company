@@ -21,11 +21,11 @@ export async function onRequest(context) {
             )
         `).run();
 
-        // ⭐️ [수정됨] GET: 근태 기록 조회 (기간 검색 지원)
+        // ⭐️ [수정] GET: 중복 행을 1줄로 압축(GROUP BY)하여 반환
         if (method === "GET") {
             const start = url.searchParams.get("start");
             const end = url.searchParams.get("end");
-            const legacyDate = url.searchParams.get("date"); // 예전 방식 하위 호환
+            const legacyDate = url.searchParams.get("date"); 
             
             const startDate = start || legacyDate || todayDate;
             const endDate = end || legacyDate || todayDate;
@@ -33,23 +33,22 @@ export async function onRequest(context) {
             let query = "";
             let params = [];
 
-            // 1. 단일 날짜 검색 (시작일 == 종료일) -> 전체 직원 기준 (결근자 포함)
             if (startDate === endDate) {
                 query = `
-                    SELECT ? as date, e.emp_id, e.name, e.phone, e.team_name, a.clock_in, a.clock_out
+                    SELECT ? as date, e.emp_id, e.name, e.phone, e.team_name, MAX(a.clock_in) as clock_in, MAX(a.clock_out) as clock_out
                     FROM employees e
                     LEFT JOIN Attendance a ON e.emp_id = a.emp_id AND a.date = ?
+                    GROUP BY e.emp_id, e.name, e.phone, e.team_name
                     ORDER BY e.team_name ASC, e.name ASC
                 `;
                 params = [startDate, startDate];
-            } 
-            // 2. 기간 검색 (시작일 != 종료일) -> 출퇴근 기록이 있는 데이터만 (엑셀과 동일)
-            else {
+            } else {
                 query = `
-                    SELECT a.date, e.emp_id, e.name, e.phone, e.team_name, a.clock_in, a.clock_out
+                    SELECT a.date, e.emp_id, e.name, e.phone, e.team_name, MAX(a.clock_in) as clock_in, MAX(a.clock_out) as clock_out
                     FROM Attendance a
                     LEFT JOIN employees e ON a.emp_id = a.emp_id
                     WHERE a.date >= ? AND a.date <= ?
+                    GROUP BY a.date, e.emp_id, e.name, e.phone, e.team_name
                     ORDER BY a.date DESC, e.team_name ASC, e.name ASC
                 `;
                 params = [startDate, endDate];
@@ -59,7 +58,7 @@ export async function onRequest(context) {
             return Response.json(results);
         }
 
-        // ⭐️ [유지됨] POST: QR코드 출퇴근 기록 저장 (수정 안 함)
+        // POST: QR코드 출퇴근 기록 저장 (기존 로직 유지)
         if (method === "POST") {
             const { employeeId, type, date, token } = await request.json();
             const targetDate = date || todayDate;
