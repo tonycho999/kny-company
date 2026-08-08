@@ -83,7 +83,6 @@
     </div>
 
     <div id="attendance-panel" class="panel">
-        <!-- ⭐️ 조회 및 엑셀 다운로드 통합 필터 박스 -->
         <div class="search-box" style="background:#e8f4f8; border-color:#baddf2;">
             <div style="font-weight:bold; width:100%; color:#2980b9; margin-bottom:5px;">🔍 근태 조회 및 엑셀 다운로드 조건 설정</div>
             <input type="date" id="search-start-date"> <span style="line-height:40px; color:#555;">~</span> <input type="date" id="search-end-date">
@@ -98,10 +97,12 @@
         <div style="overflow-x: auto;">
             <table>
                 <thead>
-                    <tr><th>사원번호</th><th>이름</th><th>근무 팀/행사장</th><th>최근 출근 시간</th><th>최근 퇴근 시간</th></tr>
+                    <!-- ⭐️ 첫 번째 열에 "근무일자" 추가 -->
+                    <tr><th>근무일자</th><th>사원번호</th><th>이름</th><th>근무 팀/행사장</th><th>최근 출근 시간</th><th>최근 퇴근 시간</th></tr>
                 </thead>
                 <tbody id="att-tbody">
-                    <tr><td colspan="5" style="padding:40px; color:#7f8c8d;">데이터를 불러오는 중입니다...</td></tr>
+                    <!-- colspan을 5에서 6으로 변경 -->
+                    <tr><td colspan="6" style="padding:40px; color:#7f8c8d;">데이터를 불러오는 중입니다...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -141,7 +142,7 @@
     let editingEmployeeId = null;
 
     document.addEventListener('DOMContentLoaded', () => {
-        resetAttSearch(); // 💡 로드 시 날짜를 오늘로 설정하고 검색 실행
+        resetAttSearch(); 
         loadEmployees();
         loadPortfolios();
     });
@@ -182,7 +183,6 @@
         renderEmployeeTable(allEmployees);
     }
 
-    // 💡 화면 근태 조회 함수
     async function searchAttendance() {
         const start = document.getElementById('search-start-date').value;
         const end = document.getElementById('search-end-date').value;
@@ -192,7 +192,6 @@
         if (!start || !end) return alert("시작일과 종료일을 모두 선택해주세요.");
 
         try {
-            // 💡 단일 date가 아니라 start, end 파라미터를 보냄
             const res = await fetch(`/api/attendance?start=${start}&end=${end}`);
             const attendanceData = await res.json();
 
@@ -204,11 +203,10 @@
 
             renderAttendanceTable(filtered);
         } catch(e) {
-            document.getElementById('att-tbody').innerHTML = '<tr><td colspan="5" style="color:red;">데이터 로딩 실패</td></tr>';
+            document.getElementById('att-tbody').innerHTML = '<tr><td colspan="6" style="color:red;">데이터 로딩 실패</td></tr>';
         }
     }
 
-    // 💡 통합된 엑셀 다운로드 함수
     function downloadExcel() {
         const start = document.getElementById('search-start-date').value;
         const end = document.getElementById('search-end-date').value;
@@ -216,12 +214,9 @@
         const keyword = document.getElementById('search-keyword-att').value;
 
         if (!start || !end) return alert("시작일과 종료일을 모두 선택해주세요.");
-        
-        // 엑셀 다운로드 API 호출 시 팀과 키워드 정보도 파라미터로 함께 전달
         window.location.href = `/api/export_attendance?start=${start}&end=${end}&team=${encodeURIComponent(teamVal)}&keyword=${encodeURIComponent(keyword)}`;
     }
 
-    // 💡 통합 근태 검색 필터 초기화
     function resetAttSearch() {
         const todayKst = new Date(Date.now() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
         document.getElementById('search-start-date').value = todayKst;
@@ -250,10 +245,13 @@
 
     function renderAttendanceTable(data) {
         const tbody = document.getElementById('att-tbody');
-        if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="padding:30px;">조건에 맞는 근태 기록이 없습니다.</td></tr>'; return; }
+        // colspan을 5에서 6으로 변경
+        if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="padding:30px;">조건에 맞는 근태 기록이 없습니다.</td></tr>'; return; }
         
         tbody.innerHTML = data.map(emp => `
             <tr>
+                <!-- ⭐️ 첫 번째 칸에 "근무일자" 표시되도록 추가 -->
+                <td style="color:#3b428b; font-weight:bold;">${emp.date || '-'}</td>
                 <td style="font-weight:bold;">${emp.emp_id || '-'}</td>
                 <td>${emp.name}</td>
                 <td>${emp.team_name}</td>
