@@ -3,7 +3,6 @@ export async function onRequestGet(context) {
     const start = url.searchParams.get("start");
     const end = url.searchParams.get("end");
     
-    // ⭐️ 프론트엔드에서 넘어온 팀과 키워드(이름) 정보 파라미터 받기
     const team = url.searchParams.get("team") || "";
     const keyword = url.searchParams.get("keyword") || "";
 
@@ -12,9 +11,9 @@ export async function onRequestGet(context) {
     }
 
     try {
-        // ⭐️ 기본 쿼리: 날짜 범위는 필수
+        // ⭐️ [수정] 엑셀 다운로드도 강제로 1명당 1줄로 압축(GROUP BY)
         let query = `
-            SELECT a.date, e.emp_id, e.name, e.phone, e.team_name, a.clock_in, a.clock_out
+            SELECT a.date, e.emp_id, e.name, e.phone, e.team_name, MAX(a.clock_in) as clock_in, MAX(a.clock_out) as clock_out
             FROM Attendance a
             LEFT JOIN employees e ON a.emp_id = e.emp_id
             WHERE a.date >= ? AND a.date <= ?
@@ -22,26 +21,23 @@ export async function onRequestGet(context) {
         
         let params = [start, end];
 
-        // ⭐️ 팀 필터가 있으면 쿼리에 추가
         if (team) {
             query += " AND e.team_name = ?";
             params.push(team);
         }
 
-        // ⭐️ 이름 키워드 검색이 있으면 쿼리에 추가 (부분 일치 LIKE)
         if (keyword) {
             query += " AND e.name LIKE ?";
             params.push(`%${keyword}%`);
         }
 
-        // 정렬 조건 추가
+        // ⭐️ 여기서 중복을 방지합니다.
+        query += " GROUP BY a.date, e.emp_id, e.name, e.phone, e.team_name";
         query += " ORDER BY a.date DESC, e.team_name ASC, e.name ASC";
         
-        // 동적 쿼리 실행
         const stmt = context.env.DB.prepare(query);
         const { results } = await stmt.bind(...params).all();
 
-        // 한글이 엑셀에서 깨지지 않도록 BOM(\uFEFF) 추가
         let csv = '\uFEFF'; 
         csv += "근무일자,사원번호,이름,연락처,배정행사장,출근시간,퇴근시간\n";
 
@@ -54,16 +50,13 @@ export async function onRequestGet(context) {
             const clockIn = row.clock_in || '미출근';
             const clockOut = row.clock_out || '미퇴근';
             
-            // 엑셀에서 쉼표(,)로 열을 구분
             csv += `${date},${empId},${name},${phone},${teamName},${clockIn},${clockOut}\n`;
         });
 
-        // ⭐️ 파일명에 팀명이나 검색어가 들어갔다면 반영하여 더 명확하게 다운로드 되도록 설정
         let filename = `출퇴근기록_${start}_to_${end}`;
         if (team) filename += `_${team}`;
         filename += `.csv`;
 
-        // 브라우저가 파일 다운로드로 인식하도록 헤더 설정
         return new Response(csv, {
             headers: {
                 'Content-Type': 'text/csv; charset=utf-8',
