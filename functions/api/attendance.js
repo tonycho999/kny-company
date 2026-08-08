@@ -21,23 +21,51 @@ export async function onRequest(context) {
             )
         `).run();
 
+        // ⭐️ [수정됨] GET: 근태 기록 조회 (기간 검색 지원)
         if (method === "GET") {
-            const date = url.searchParams.get("date") || todayDate;
-            const query = `
-                SELECT e.emp_id, e.name, e.phone, e.team_name, a.clock_in, a.clock_out
-                FROM employees e
-                LEFT JOIN Attendance a ON e.emp_id = a.emp_id AND a.date = ?
-            `;
-            const { results } = await env.DB.prepare(query).bind(date).all();
+            const start = url.searchParams.get("start");
+            const end = url.searchParams.get("end");
+            const legacyDate = url.searchParams.get("date"); // 예전 방식 하위 호환
+            
+            const startDate = start || legacyDate || todayDate;
+            const endDate = end || legacyDate || todayDate;
+
+            let query = "";
+            let params = [];
+
+            // 1. 단일 날짜 검색 (시작일 == 종료일) -> 전체 직원 기준 (결근자 포함)
+            if (startDate === endDate) {
+                query = `
+                    SELECT ? as date, e.emp_id, e.name, e.phone, e.team_name, a.clock_in, a.clock_out
+                    FROM employees e
+                    LEFT JOIN Attendance a ON e.emp_id = a.emp_id AND a.date = ?
+                    ORDER BY e.team_name ASC, e.name ASC
+                `;
+                params = [startDate, startDate];
+            } 
+            // 2. 기간 검색 (시작일 != 종료일) -> 출퇴근 기록이 있는 데이터만 (엑셀과 동일)
+            else {
+                query = `
+                    SELECT a.date, e.emp_id, e.name, e.phone, e.team_name, a.clock_in, a.clock_out
+                    FROM Attendance a
+                    LEFT JOIN employees e ON a.emp_id = a.emp_id
+                    WHERE a.date >= ? AND a.date <= ?
+                    ORDER BY a.date DESC, e.team_name ASC, e.name ASC
+                `;
+                params = [startDate, endDate];
+            }
+
+            const { results } = await env.DB.prepare(query).bind(...params).all();
             return Response.json(results);
         }
 
+        // ⭐️ [유지됨] POST: QR코드 출퇴근 기록 저장 (수정 안 함)
         if (method === "POST") {
             const { employeeId, type, date, token } = await request.json();
             const targetDate = date || todayDate;
-
             const currentSlice = Math.floor(kstTime.getTime() / 10000);
             const tokenDiff = currentSlice - parseInt(token);
+
             if (isNaN(tokenDiff) || tokenDiff < 0 || tokenDiff > 5) {
                 return Response.json({ error: "만료되거나 유효하지 않은 QR코드입니다." }, { status: 400 });
             }
@@ -76,12 +104,13 @@ export async function onRequest(context) {
                 const empRec = await env.DB.prepare("SELECT check_out_time FROM employees WHERE emp_id = ?").bind(employeeId).first();
                 let newCheckOutTime = now.toISOString();
                 if (empRec && empRec.check_out_time) newCheckOutTime = empRec.check_out_time + ', ' + now.toISOString();
-
+                
                 await env.DB.prepare("UPDATE employees SET check_out_time = ? WHERE emp_id = ?").bind(newCheckOutTime, employeeId).run();
             }
 
             return Response.json({ success: true, name: emp.name });
         }
+
         return new Response("Method Not Allowed", { status: 405 });
     } catch (e) {
         return Response.json({ error: e.message }, { status: 500 });
