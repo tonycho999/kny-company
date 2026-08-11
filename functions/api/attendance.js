@@ -28,40 +28,40 @@ export async function onRequest(context) {
             const startDate = start || legacyDate || todayDate;
             const endDate = end || legacyDate || todayDate;
 
-            let query = "";
-            let params = [];
-
-            // ⭐️ 단일 날짜 조회: LIKE를 사용하여 시간 꼬리가 붙은 데이터도 100% 긁어옵니다.
-            if (startDate === endDate) {
-                query = `
-                    SELECT ? as date, e.emp_id, e.name, e.phone, e.team_name, 
-                           MAX(a.clock_in) as clock_in, MAX(a.clock_out) as clock_out
-                    FROM employees e
-                    LEFT JOIN Attendance a ON e.emp_id = a.emp_id AND a.date LIKE ?
-                    GROUP BY e.emp_id, e.name, e.phone, e.team_name
-                    ORDER BY e.team_name ASC, e.name ASC
-                `;
-                params = [startDate, startDate + '%'];
-            } 
-            // ⭐️ 기간 날짜 조회: 종료일에 23:59:59를 붙여서 마지막 날의 퇴근 기록까지 놓치지 않습니다.
-            else {
-                query = `
-                    SELECT SUBSTR(a.date, 1, 10) as date, e.emp_id, e.name, e.phone, e.team_name, 
-                           MAX(a.clock_in) as clock_in, MAX(a.clock_out) as clock_out
-                    FROM Attendance a
-                    LEFT JOIN employees e ON a.emp_id = a.emp_id
-                    WHERE a.date >= ? AND a.date <= ?
-                    GROUP BY SUBSTR(a.date, 1, 10), e.emp_id, e.name, e.phone, e.team_name
-                    ORDER BY date DESC, e.team_name ASC, e.name ASC
-                `;
-                params = [startDate, endDate + ' 23:59:59'];
-            }
-
+            // ⭐️ 핵심 수정: RECURSIVE CTE를 사용해 '시작일~종료일'까지의 가상 달력을 만들고, 
+            // 이를 모든 직원(employees)과 CROSS JOIN(곱하기) 한 뒤, 실제 출퇴근 기록을 LEFT JOIN으로 붙입니다.
+            const query = `
+                WITH RECURSIVE dates(date_val) AS (
+                    SELECT ? 
+                    UNION ALL
+                    SELECT date(date_val, '+1 day')
+                    FROM dates
+                    WHERE date_val < ?
+                )
+                SELECT 
+                    d.date_val AS date,
+                    e.emp_id, 
+                    e.name, 
+                    e.phone, 
+                    e.team_name, 
+                    MAX(a.clock_in) AS clock_in, 
+                    MAX(a.clock_out) AS clock_out
+                FROM dates d
+                CROSS JOIN employees e
+                LEFT JOIN Attendance a 
+                    ON e.emp_id = a.emp_id 
+                    AND SUBSTR(a.date, 1, 10) = d.date_val
+                GROUP BY d.date_val, e.emp_id, e.name, e.phone, e.team_name
+                ORDER BY d.date_val DESC, e.team_name ASC, e.name ASC
+            `;
+            
+            const params = [startDate, endDate];
             const { results } = await env.DB.prepare(query).bind(...params).all();
+            
             return Response.json(results);
         }
 
-        // POST 로직 (기존과 동일)
+        // POST 로직 (기존과 동일하게 유지)
         if (method === "POST") {
             const { employeeId, type, date, token } = await request.json();
             
