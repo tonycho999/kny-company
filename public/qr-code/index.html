@@ -90,20 +90,20 @@
         }
 
         function generateAdminQR() {
-            const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
-            const timeSlice = Math.floor(nowKst.getTime() / 10000); 
+            const timeSlice = Math.floor(Date.now() / 10000); 
             const fakeSig = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2) + "KNYSECURE";
             
             const fullUrl = window.location.origin + "/employee/scan.html?auth_sig=" + fakeSig + "&token=" + timeSlice + "&mode=secure";
             
             document.getElementById('debug-url').innerText = "코드 번호: " + timeSlice; 
             
-            // ⭐️ [수정] 외부 API 서버 요청 대신, 직접 최신 데이터로 QR 갱신
+            // ⭐️ 외부 API 서버 요청 대신, 직접 최신 데이터로 QR 갱신
             if(qrcode) {
                 qrcode.clear(); 
                 qrcode.makeCode(fullUrl); 
             }
         }
+
     </script>
 </body>
 </html>
