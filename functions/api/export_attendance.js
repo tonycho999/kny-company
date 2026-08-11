@@ -11,12 +11,12 @@ export async function onRequestGet(context) {
     }
 
     try {
-        // ⭐️ [수정] 엑셀 다운로드도 강제로 1명당 1줄로 압축(GROUP BY)
+        // ⭐️ 핵심 수정: 엑셀 쿼리에서도 시간 꼬리 무시(SUBSTR) 적용 및 중복 제거
         let query = `
-            SELECT a.date, e.emp_id, e.name, e.phone, e.team_name, MAX(a.clock_in) as clock_in, MAX(a.clock_out) as clock_out
+            SELECT SUBSTR(a.date, 1, 10) as date, e.emp_id, e.name, e.phone, e.team_name, MAX(a.clock_in) as clock_in, MAX(a.clock_out) as clock_out
             FROM Attendance a
             LEFT JOIN employees e ON a.emp_id = e.emp_id
-            WHERE a.date >= ? AND a.date <= ?
+            WHERE SUBSTR(a.date, 1, 10) >= ? AND SUBSTR(a.date, 1, 10) <= ?
         `;
         
         let params = [start, end];
@@ -31,9 +31,8 @@ export async function onRequestGet(context) {
             params.push(`%${keyword}%`);
         }
 
-        // ⭐️ 여기서 중복을 방지합니다.
-        query += " GROUP BY a.date, e.emp_id, e.name, e.phone, e.team_name";
-        query += " ORDER BY a.date DESC, e.team_name ASC, e.name ASC";
+        query += " GROUP BY SUBSTR(a.date, 1, 10), e.emp_id, e.name, e.phone, e.team_name";
+        query += " ORDER BY date DESC, e.team_name ASC, e.name ASC";
         
         const stmt = context.env.DB.prepare(query);
         const { results } = await stmt.bind(...params).all();
