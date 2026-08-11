@@ -55,6 +55,7 @@
         <div id="status-area">
             <p class="message info" id="status-text">🔄 시스템에 안전하게 연결 중입니다...</p>
         </div>
+
         <span id="reset-btn" class="reset-link hidden" onclick="resetSavedId()">사원번호 재설정</span>
     </div>
 
@@ -73,11 +74,13 @@
                     return;
                 }
 
-                const nowKst = new Date(Date.now() + (9 * 60 * 60 * 1000));
-                const currentSlice = Math.floor(nowKst.getTime() / 10000);
+                // ⭐️ [핵심 수정 1] 한국시간 억지 보정 로직을 삭제하고 서버와 동일한 절대 시간(Date.now) 사용
+                const currentSlice = Math.floor(Date.now() / 10000);
                 globalRealToken = parseInt(rawToken);
                 
                 const tokenDiff = currentSlice - globalRealToken;
+                
+                // 만료 검사
                 if (isNaN(tokenDiff) || tokenDiff < 0 || tokenDiff > 5) { 
                     showMsg('❌ 만료된 QR코드입니다. 입구의 최신 화면을 다시 스캔해주세요.', 'error');
                     return;
@@ -85,6 +88,7 @@
 
                 let savedId = null;
                 try { savedId = localStorage.getItem('savedEmployeeId'); } catch(e) { }
+
                 if (savedId) {
                     globalEmployeeId = savedId;
                     document.getElementById('reset-btn').classList.remove('hidden');
@@ -120,8 +124,10 @@
                     return;
                 }
 
-                const todayKst = new Date(Date.now() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
-                const resAtt = await fetch(`/api/attendance?date=${todayKst}`);
+                const todayKst = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+                
+                // ⭐️ [핵심 수정 2] 서버 API 파라미터가 start, end로 바뀌었으므로 이에 맞춰 호출하도록 변경
+                const resAtt = await fetch(`/api/attendance?start=${todayKst}&end=${todayKst}`);
                 
                 let inCount = 0;
                 let outCount = 0;
@@ -131,8 +137,12 @@
                     if (Array.isArray(attendances)) {
                         const myTodayRecord = attendances.find(att => String(att.emp_id) === String(employeeId));
                         if (myTodayRecord) {
-                            if (myTodayRecord.clock_in) inCount = myTodayRecord.clock_in.split(',').length;
-                            if (myTodayRecord.clock_out) outCount = myTodayRecord.clock_out.split(',').length;
+                            if (myTodayRecord.clock_in && myTodayRecord.clock_in !== '미출근') {
+                                inCount = myTodayRecord.clock_in.split(',').length;
+                            }
+                            if (myTodayRecord.clock_out && myTodayRecord.clock_out !== '미퇴근' && myTodayRecord.clock_out !== null) {
+                                outCount = myTodayRecord.clock_out.split(',').length;
+                            }
                         }
                     }
                 }
@@ -162,25 +172,28 @@
         async function submitAttendance(type) {
             document.getElementById('choice-form').classList.add('hidden');
             showMsg('⏳ 출퇴근 기록 전송 중...', 'info');
+
             try {
                 const response = await fetch('/api/attendance', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ employeeId: globalEmployeeId, type, token: globalRealToken })
                 });
+                
                 const result = await response.json();
                 
                 if (response.ok) {
-                    // 💡 수정된 부분: 기기 설정에 상관없이 안전하게 한국 시간 추출
                     const kstDate = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Seoul"}));
                     const hours = String(kstDate.getHours()).padStart(2, '0');
                     const minutes = String(kstDate.getMinutes()).padStart(2, '0');
                     
                     const typeText = type === 'in' ? '출근' : '퇴근';
+
                     try {
                         const audio = type === 'in' ? new Audio('/sounds/clock_in.mp3') : new Audio('/sounds/clock_out.mp3');
                         await audio.play();
                     } catch(e) { }
+
                     showMsg(`✅ ${result.name}님, ${hours}시 ${minutes}분에 ${typeText} 처리되었습니다.`, 'success');
                 } else {
                     showMsg(`❌ 처리 실패: ${result.error}`, 'error');
