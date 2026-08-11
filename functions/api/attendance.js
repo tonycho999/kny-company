@@ -5,11 +5,8 @@ export async function onRequest(context) {
 
     if (!env.DB) return Response.json({ error: "DB 설정 안됨" }, { status: 500 });
 
-    // ⭐️ [수정 핵심] 어떤 서버 환경에서도 무조건 '한국 시간(KST)'으로 고정하는 로직
     const now = new Date();
-    // 날짜: 'YYYY-MM-DD' 포맷 (한국 시간 기준)
     const todayDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
-    // 시간: 'HH:MM' 포맷 (한국 시간 기준 24시간제)
     const currentTime = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' }).format(now);
 
     try {
@@ -23,7 +20,6 @@ export async function onRequest(context) {
             )
         `).run();
 
-        // GET: 근태 기록 조회
         if (method === "GET") {
             const start = url.searchParams.get("start");
             const end = url.searchParams.get("end");
@@ -35,23 +31,24 @@ export async function onRequest(context) {
             let query = "";
             let params = [];
 
+            // ⭐️ 핵심 수정: SUBSTR(a.date, 1, 10)을 사용하여 꼬리에 붙은 시간을 무시하고 날짜만 정확히 비교
             if (startDate === endDate) {
                 query = `
                     SELECT ? as date, e.emp_id, e.name, e.phone, e.team_name, MAX(a.clock_in) as clock_in, MAX(a.clock_out) as clock_out
                     FROM employees e
-                    LEFT JOIN Attendance a ON e.emp_id = a.emp_id AND a.date = ?
+                    LEFT JOIN Attendance a ON e.emp_id = a.emp_id AND SUBSTR(a.date, 1, 10) = ?
                     GROUP BY e.emp_id, e.name, e.phone, e.team_name
                     ORDER BY e.team_name ASC, e.name ASC
                 `;
                 params = [startDate, startDate];
             } else {
                 query = `
-                    SELECT a.date, e.emp_id, e.name, e.phone, e.team_name, MAX(a.clock_in) as clock_in, MAX(a.clock_out) as clock_out
+                    SELECT SUBSTR(a.date, 1, 10) as date, e.emp_id, e.name, e.phone, e.team_name, MAX(a.clock_in) as clock_in, MAX(a.clock_out) as clock_out
                     FROM Attendance a
                     LEFT JOIN employees e ON a.emp_id = a.emp_id
-                    WHERE a.date >= ? AND a.date <= ?
-                    GROUP BY a.date, e.emp_id, e.name, e.phone, e.team_name
-                    ORDER BY a.date DESC, e.team_name ASC, e.name ASC
+                    WHERE SUBSTR(a.date, 1, 10) >= ? AND SUBSTR(a.date, 1, 10) <= ?
+                    GROUP BY SUBSTR(a.date, 1, 10), e.emp_id, e.name, e.phone, e.team_name
+                    ORDER BY date DESC, e.team_name ASC, e.name ASC
                 `;
                 params = [startDate, endDate];
             }
@@ -60,12 +57,15 @@ export async function onRequest(context) {
             return Response.json(results);
         }
 
-        // POST: QR코드 출퇴근 기록 저장
         if (method === "POST") {
             const { employeeId, type, date, token } = await request.json();
-            const targetDate = date || todayDate;
             
-            // 토큰 검증은 UTC(절대시간) 기준으로 해야 하므로 Date.now() 그대로 사용
+            // ⭐️ 새로 들어오는 데이터도 무조건 10자리(YYYY-MM-DD)만 잘라서 강제 저장
+            let targetDate = todayDate;
+            if (date && typeof date === 'string' && date.length >= 10) {
+                targetDate = date.substring(0, 10);
+            }
+
             const currentSlice = Math.floor(now.getTime() / 10000); 
             const tokenDiff = currentSlice - parseInt(token);
 
@@ -76,23 +76,21 @@ export async function onRequest(context) {
             const emp = await env.DB.prepare("SELECT name, team_name FROM employees WHERE emp_id = ?").bind(employeeId).first();
             if (!emp) return Response.json({ error: "등록되지 않은 사원번호입니다." }, { status: 400 });
 
-            const record = await env.DB.prepare("SELECT * FROM Attendance WHERE emp_id = ? AND date = ?").bind(employeeId, targetDate).first();
+            const record = await env.DB.prepare("SELECT * FROM Attendance WHERE emp_id = ? AND SUBSTR(date, 1, 10) = ?").bind(employeeId, targetDate).first();
 
             if (type === 'in') {
                 let newClockIn = currentTime;
                 if (record && record.clock_in) newClockIn = record.clock_in + ', ' + currentTime;
 
                 if (record) {
-                    await env.DB.prepare("UPDATE Attendance SET clock_in = ? WHERE emp_id = ? AND date = ?").bind(newClockIn, employeeId, targetDate).run();
+                    await env.DB.prepare("UPDATE Attendance SET clock_in = ? WHERE emp_id = ? AND SUBSTR(date, 1, 10) = ?").bind(newClockIn, employeeId, targetDate).run();
                 } else {
                     await env.DB.prepare("INSERT INTO Attendance (emp_id, date, clock_in) VALUES (?, ?, ?)").bind(employeeId, targetDate, newClockIn).run();
                 }
 
-                // ⭐️ 직원의 check_in_time 에도 KST 한국 시간으로 저장되도록 수정
                 const empRec = await env.DB.prepare("SELECT check_in_time FROM employees WHERE emp_id = ?").bind(employeeId).first();
                 let newCheckInTime = `${todayDate} ${currentTime}`;
                 if (empRec && empRec.check_in_time) newCheckInTime = empRec.check_in_time + ', ' + `${todayDate} ${currentTime}`;
-                
                 await env.DB.prepare("UPDATE employees SET check_in_time = ? WHERE emp_id = ?").bind(newCheckInTime, employeeId).run();
 
             } else if (type === 'out') {
@@ -100,16 +98,14 @@ export async function onRequest(context) {
                 if (record && record.clock_out) newClockOut = record.clock_out + ', ' + currentTime;
 
                 if (record) {
-                    await env.DB.prepare("UPDATE Attendance SET clock_out = ? WHERE emp_id = ? AND date = ?").bind(newClockOut, employeeId, targetDate).run();
+                    await env.DB.prepare("UPDATE Attendance SET clock_out = ? WHERE emp_id = ? AND SUBSTR(date, 1, 10) = ?").bind(newClockOut, employeeId, targetDate).run();
                 } else {
                     await env.DB.prepare("INSERT INTO Attendance (emp_id, date, clock_out) VALUES (?, ?, ?)").bind(employeeId, targetDate, newClockOut).run();
                 }
 
-                // ⭐️ 직원의 check_out_time 에도 KST 한국 시간으로 저장되도록 수정
                 const empRec = await env.DB.prepare("SELECT check_out_time FROM employees WHERE emp_id = ?").bind(employeeId).first();
                 let newCheckOutTime = `${todayDate} ${currentTime}`;
                 if (empRec && empRec.check_out_time) newCheckOutTime = empRec.check_out_time + ', ' + `${todayDate} ${currentTime}`;
-                
                 await env.DB.prepare("UPDATE employees SET check_out_time = ? WHERE emp_id = ?").bind(newCheckOutTime, employeeId).run();
             }
 
