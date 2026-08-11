@@ -31,36 +31,40 @@ export async function onRequest(context) {
             let query = "";
             let params = [];
 
-            // ⭐️ 핵심 수정: SUBSTR(a.date, 1, 10)을 사용하여 꼬리에 붙은 시간을 무시하고 날짜만 정확히 비교
+            // ⭐️ 단일 날짜 조회: LIKE를 사용하여 시간 꼬리가 붙은 데이터도 100% 긁어옵니다.
             if (startDate === endDate) {
                 query = `
-                    SELECT ? as date, e.emp_id, e.name, e.phone, e.team_name, MAX(a.clock_in) as clock_in, MAX(a.clock_out) as clock_out
+                    SELECT ? as date, e.emp_id, e.name, e.phone, e.team_name, 
+                           MAX(a.clock_in) as clock_in, MAX(a.clock_out) as clock_out
                     FROM employees e
-                    LEFT JOIN Attendance a ON e.emp_id = a.emp_id AND SUBSTR(a.date, 1, 10) = ?
+                    LEFT JOIN Attendance a ON e.emp_id = a.emp_id AND a.date LIKE ?
                     GROUP BY e.emp_id, e.name, e.phone, e.team_name
                     ORDER BY e.team_name ASC, e.name ASC
                 `;
-                params = [startDate, startDate];
-            } else {
+                params = [startDate, startDate + '%'];
+            } 
+            // ⭐️ 기간 날짜 조회: 종료일에 23:59:59를 붙여서 마지막 날의 퇴근 기록까지 놓치지 않습니다.
+            else {
                 query = `
-                    SELECT SUBSTR(a.date, 1, 10) as date, e.emp_id, e.name, e.phone, e.team_name, MAX(a.clock_in) as clock_in, MAX(a.clock_out) as clock_out
+                    SELECT SUBSTR(a.date, 1, 10) as date, e.emp_id, e.name, e.phone, e.team_name, 
+                           MAX(a.clock_in) as clock_in, MAX(a.clock_out) as clock_out
                     FROM Attendance a
                     LEFT JOIN employees e ON a.emp_id = a.emp_id
-                    WHERE SUBSTR(a.date, 1, 10) >= ? AND SUBSTR(a.date, 1, 10) <= ?
+                    WHERE a.date >= ? AND a.date <= ?
                     GROUP BY SUBSTR(a.date, 1, 10), e.emp_id, e.name, e.phone, e.team_name
                     ORDER BY date DESC, e.team_name ASC, e.name ASC
                 `;
-                params = [startDate, endDate];
+                params = [startDate, endDate + ' 23:59:59'];
             }
 
             const { results } = await env.DB.prepare(query).bind(...params).all();
             return Response.json(results);
         }
 
+        // POST 로직 (기존과 동일)
         if (method === "POST") {
             const { employeeId, type, date, token } = await request.json();
             
-            // ⭐️ 새로 들어오는 데이터도 무조건 10자리(YYYY-MM-DD)만 잘라서 강제 저장
             let targetDate = todayDate;
             if (date && typeof date === 'string' && date.length >= 10) {
                 targetDate = date.substring(0, 10);
