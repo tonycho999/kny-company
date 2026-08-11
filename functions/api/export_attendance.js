@@ -11,15 +11,16 @@ export async function onRequestGet(context) {
     }
 
     try {
-        // ⭐️ 핵심 수정: 엑셀 쿼리에서도 시간 꼬리 무시(SUBSTR) 적용 및 중복 제거
+        // ⭐️ 기간 엑셀 조회도 마찬가지로 23:59:59를 붙여 100% 동일한 로직으로 추출합니다.
         let query = `
-            SELECT SUBSTR(a.date, 1, 10) as date, e.emp_id, e.name, e.phone, e.team_name, MAX(a.clock_in) as clock_in, MAX(a.clock_out) as clock_out
+            SELECT SUBSTR(a.date, 1, 10) as date, e.emp_id, e.name, e.phone, e.team_name, 
+                   MAX(a.clock_in) as clock_in, MAX(a.clock_out) as clock_out
             FROM Attendance a
             LEFT JOIN employees e ON a.emp_id = e.emp_id
-            WHERE SUBSTR(a.date, 1, 10) >= ? AND SUBSTR(a.date, 1, 10) <= ?
+            WHERE a.date >= ? AND a.date <= ?
         `;
         
-        let params = [start, end];
+        let params = [start, end + " 23:59:59"];
 
         if (team) {
             query += " AND e.team_name = ?";
