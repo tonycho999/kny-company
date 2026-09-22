@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>설문조사 결과 관리자</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; margin: 0; padding: 20px; background-color: #f8f9fa; }
+        h2 { text-align: center; color: #333; }
+        .summary { text-align: center; margin-bottom: 20px; font-size: 1.2em; font-weight: bold; }
+        .btn-export { display: block; width: 150px; margin: 0 auto 20px; padding: 10px; background: #28a745; color: white; text-align: center; border-radius: 5px; cursor: pointer; border: none; font-weight: bold; font-size: 14px; }
+        .btn-export:hover { background: #218838; }
+        
+        .table-container { overflow-x: auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        th, td { padding: 12px 15px; text-align: center; border-bottom: 1px solid #dee2e6; font-size: 14px; }
+        th { background-color: #343a40; color: white; white-space: nowrap; }
+        tr:hover { background-color: #f1f3f5; }
+        td:last-child { text-align: left; } /* 자유의견은 좌측 정렬 */
+        .error { color: red; text-align: center; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h2>📊 서산시 물놀이장 설문 결과 (관리자 전용)</h2>
+    <div class="summary">총 응답수: <span id="totalCount" style="color: #007bff;">0</span>건</div>
+    
+    <button class="btn-export" onclick="downloadCSV()">📥 CSV (엑셀) 다운로드</button>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>NO</th>
+                    <th>제출일시</th>
+                    <th>연령대(Q1)</th>
+                    <th>이용경험(Q2)</th>
+                    <th>인지여부(Q3)</th>
+                    <th>통합의견(Q4)</th>
+                    <th>상세의견(Q5)</th>
+                    <th>자유의견(Q6)</th>
+                </tr>
+            </thead>
+            <tbody id="resultBody">
+                <tr><td colspan="8">데이터를 불러오는 중입니다...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let surveyData = [];
+
+        // 페이지 로드 시 API 호출
+        async function loadResults() {
+            try {
+                const response = await fetch('/survey-api/get-results');
+                const result = await response.json();
+                const tbody = document.getElementById('resultBody');
+                
+                if (result.success) {
+                    surveyData = result.data;
+                    document.getElementById('totalCount').innerText = surveyData.length;
+                    
+                    if (surveyData.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="8">아직 제출된 설문 응답이 없습니다.</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = '';
+                    surveyData.forEach((row, index) => {
+                        // SQLite의 UTC 시간을 한국 시간(KST)으로 변환
+                        const date = new Date(row.submitted_at + 'Z'); 
+                        const dateString = date.toLocaleString('ko-KR');
+
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${surveyData.length - index}</td>
+                            <td>${dateString}</td>
+                            <td>${row.q1_age || '-'}</td>
+                            <td>${row.q2_experience || '-'}</td>
+                            <td>${row.q3_awareness || '-'}</td>
+                            <td style="font-weight:bold; color:${row.q4_integration === '찬성' ? '#007bff' : (row.q4_integration === '반대' ? '#dc3545' : '#333')}">${row.q4_integration || '-'}</td>
+                            <td>${row.q5_integration_detail || '-'}</td>
+                            <td>${row.q6_free_opinion || '-'}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="8" class="error">오류가 발생했습니다: ${result.error}</td></tr>`;
+                }
+            } catch (err) {
+                document.getElementById('resultBody').innerHTML = '<tr><td colspan="8" class="error">서버와 통신할 수 없습니다.</td></tr>';
+            }
+        }
+
+        // CSV 엑셀 다운로드 함수
+        function downloadCSV() {
+            if(surveyData.length === 0) {
+                alert("다운로드할 데이터가 없습니다.");
+                return;
+            }
+            
+            // 엑셀에서 한글 깨짐 방지를 위한 BOM(\uFEFF) 추가
+            let csvContent = "\uFEFF번호,제출일시,연령대,이용경험,인지여부,통합의견,상세의견,자유의견\n";
+            
+            surveyData.forEach((row, index) => {
+                const date = new Date(row.submitted_at + 'Z').toLocaleString('ko-KR');
+                // 자유의견 안의 쉼표나 줄바꿈이 CSV 구조를 깨지 않도록 처리
+                const freeOp = row.q6_free_opinion ? row.q6_free_opinion.replace(/,/g, "，").replace(/\n/g, " ") : "";
+                
+                const rowArray = [
+                    surveyData.length - index,
+                    date,
+                    row.q1_age,
+                    row.q2_experience,
+                    row.q3_awareness,
+                    row.q4_integration,
+                    row.q5_integration_detail || "",
+                    freeOp
+                ];
+                csvContent += rowArray.join(",") + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "서산시_설문결과.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        window.onload = loadResults;
+    </script>
+</body>
+</html>
