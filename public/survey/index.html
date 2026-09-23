@@ -5,83 +5,186 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>서산시 여름테마파크·야외물놀이장 운영방식 설문조사</title>
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; line-height: 1.6; }
-        .question { margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
-        .question p { font-weight: bold; }
-        label { display: block; margin-bottom: 8px; }
-        #q5_container { display: none; background-color: #f4f7f6; padding: 15px; border-radius: 8px; border: none; }
-        textarea { width: 100%; padding: 10px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background-color: #0056b3; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
-        button:hover { background-color: #004494; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            line-height: 1.6; 
+            color: #333;
+            background-color: #fafafa;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 25px 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        h2 { 
+            margin-top: 0; 
+            color: #111; 
+            font-size: 1.35rem; 
+            border-bottom: 2px solid #0056b3; 
+            padding-bottom: 12px; 
+            word-break: keep-all;
+        }
+        .period { 
+            font-size: 0.9rem; 
+            color: #666; 
+            margin-bottom: 25px; 
+        }
+        .question { 
+            margin-bottom: 25px; 
+            padding-bottom: 20px; 
+            border-bottom: 1px solid #eee; 
+        }
+        .question p { 
+            font-weight: 600; 
+            margin-bottom: 12px; 
+            font-size: 1rem;
+            word-break: keep-all;
+        }
+        label { 
+            display: flex; 
+            align-items: center; 
+            margin-bottom: 10px; 
+            cursor: pointer; 
+            font-size: 0.95rem;
+        }
+        input[type="radio"] { 
+            margin-right: 10px; 
+            transform: scale(1.1);
+        }
+        #q5_container { 
+            display: none; 
+            background-color: #f1f5f9; 
+            padding: 16px; 
+            border-radius: 8px; 
+            border: 1px solid #e2e8f0;
+        }
+        textarea { 
+            width: 100%; 
+            padding: 12px; 
+            box-sizing: border-box; 
+            border: 1px solid #ccc; 
+            border-radius: 6px; 
+            font-size: 0.95rem;
+            resize: vertical;
+        }
+        button { 
+            width: 100%; 
+            padding: 16px; 
+            background-color: #0056b3; 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            font-size: 1.05rem; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: background-color 0.2s;
+        }
+        button:hover { 
+            background-color: #004494; 
+        }
+        /* 시스템 하단 푸터 (자연스러운 운영사 표기) */
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 15px;
+            font-size: 12px;
+            color: #888;
+        }
+        footer a {
+            color: #666;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        footer a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
-    <h2>서산시 여름테마파크·야외물놀이장 운영방식 설문조사</h2>
-    <p><strong>조사기간:</strong> 2026. 9. 29. ~ 10. 8. [10일간]</p>
+    <div class="container">
+        <h2>서산시 여름테마파크·야외물놀이장 운영방식 설문조사</h2>
+        <div class="period"><strong>조사기간:</strong> 2026. 9. 29. ~ 10. 8. [10일간]</div>
 
-    <form id="surveyForm">
-        <div class="question">
-            <p>&lt;문항1&gt; 귀하의 연령대는?</p>
-            <label><input type="radio" name="q1_age" value="10대 이하" required> ① 10대 이하</label>
-            <label><input type="radio" name="q1_age" value="20대"> ② 20대</label>
-            <label><input type="radio" name="q1_age" value="30대"> ③ 30대</label>
-            <label><input type="radio" name="q1_age" value="40대"> ④ 40대</label>
-            <label><input type="radio" name="q1_age" value="50대"> ⑤ 50대</label>
-            <label><input type="radio" name="q1_age" value="60대 이상"> ⑥ 60대 이상</label>
-        </div>
+        <form id="surveyForm">
+            <!-- 문항 1 -->
+            <div class="question">
+                <p>&lt;문항1&gt; 귀하의 연령대는?</p>
+                <label><input type="radio" name="q1_age" value="10대 이하" required> ① 10대 이하</label>
+                <label><input type="radio" name="q1_age" value="20대"> ② 20대</label>
+                <label><input type="radio" name="q1_age" value="30대"> ③ 30대</label>
+                <label><input type="radio" name="q1_age" value="40대"> ④ 40대</label>
+                <label><input type="radio" name="q1_age" value="50대"> ⑤ 50대</label>
+                <label><input type="radio" name="q1_age" value="60대 이상"> ⑥ 60대 이상</label>
+            </div>
 
-        <div class="question">
-            <p>&lt;문항2&gt; 귀하는 서산시 여름테마파크 또는 야외물놀이장을 이용해 보신 적이 있습니까?</p>
-            <label><input type="radio" name="q2_experience" value="야외물놀이장만 이용" required> ① 야외물놀이장만 이용</label>
-            <label><input type="radio" name="q2_experience" value="여름테마파크만 이용"> ② 여름테마파크만 이용</label>
-            <label><input type="radio" name="q2_experience" value="두 시설 모두 이용"> ③ 두 시설 모두 이용</label>
-            <label><input type="radio" name="q2_experience" value="이용한 적 없음"> ④ 이용한 적 없음</label>
-        </div>
+            <!-- 문항 2 -->
+            <div class="question">
+                <p>&lt;문항2&gt; 귀하는 서산시 여름테마파크 또는 야외물놀이장을 이용해 보신 적이 있습니까?</p>
+                <label><input type="radio" name="q2_experience" value="야외물놀이장만 이용" required> ① 야외물놀이장만 이용</label>
+                <label><input type="radio" name="q2_experience" value="여름테마파크만 이용"> ② 여름테마파크만 이용</label>
+                <label><input type="radio" name="q2_experience" value="두 시설 모두 이용"> ③ 두 시설 모두 이용</label>
+                <label><input type="radio" name="q2_experience" value="이용한 적 없음"> ④ 이용한 적 없음</label>
+            </div>
 
-        <div class="question">
-            <p>&lt;문항3&gt; 서산시는 올해에도 여름테마파크와 야외물놀이장을 별도로 운영하였다는 사실을 알고 계셨습니까?</p>
-            <label><input type="radio" name="q3_awareness" value="알고 있었다" required> ① 알고 있었다</label>
-            <label><input type="radio" name="q3_awareness" value="잘 몰랐다"> ② 잘 몰랐다</label>
-            <label><input type="radio" name="q3_awareness" value="전혀 몰랐다"> ③ 전혀 몰랐다</label>
-        </div>
+            <!-- 문항 3 -->
+            <div class="question">
+                <p>&lt;문항3&gt; 서산시는 올해에도 여름테마파크와 야외물놀이장을 별도로 운영하였다는 사실을 알고 계셨습니까?</p>
+                <label><input type="radio" name="q3_awareness" value="알고 있었다" required> ① 알고 있었다</label>
+                <label><input type="radio" name="q3_awareness" value="잘 몰랐다"> ② 잘 몰랐다</label>
+                <label><input type="radio" name="q3_awareness" value="전혀 몰랐다"> ③ 전혀 몰랐다</label>
+            </div>
 
-        <div class="question">
-            <p>&lt;문항4&gt; 두 시설을 통합하여 하나의 여름철 종합물놀이·테마파크 형태로 운영하는 것에 대해 어떻게 생각하십니까?</p>
-            <label><input type="radio" name="q4_integration" value="찬성" onchange="toggleQ5()" required> ① 찬성</label>
-            <label><input type="radio" name="q4_integration" value="반대" onchange="toggleQ5()"> ② 반대</label>
-            <label><input type="radio" name="q4_integration" value="별도의견 없음" onchange="toggleQ5()"> ③ 별도의견 없음</label>
-        </div>
+            <!-- 문항 4 -->
+            <div class="question">
+                <p>&lt;문항4&gt; 두 시설을 통합하여 하나의 여름철 종합물놀이·테마파크 형태로 운영하는 것에 대해 어떻게 생각하십니까?</p>
+                <label><input type="radio" name="q4_integration" value="찬성" onchange="toggleQ5()" required> ① 찬성</label>
+                <label><input type="radio" name="q4_integration" value="반대" onchange="toggleQ5()"> ② 반대</label>
+                <label><input type="radio" name="q4_integration" value="별도의견 없음" onchange="toggleQ5()"> ③ 별도의견 없음</label>
+            </div>
 
-        <div class="question" id="q5_container">
-            <p>&lt;문항5&gt; 두 시설을 통합하여 하나의 여름철 종합물놀이·테마파크 형태로 운영하는 것에 대해 어떻게 생각하십니까? (통합운영 찬성만 작성)</p>
-            <p><small>[참고] 2026년 여름테마파크 운영기간(2026. 7.18. ~ 8.23.)</small></p>
-            <label><input type="radio" name="q5_integration_detail" value="현재 수준 유지"> ① 현재 수준 유지</label>
-            <label><input type="radio" name="q5_integration_detail" value="1주일 연장"> ② 1주일 연장</label>
-            <label><input type="radio" name="q5_integration_detail" value="이용수요에 따라 탄력 운영"> ③ 이용수요에 따라 탄력 운영</label>
-        </div>
+            <!-- 문항 5 (조건부 노출) -->
+            <div class="question" id="q5_container">
+                <p>&lt;문항5&gt; 두 시설을 통합하여 하나의 여름철 종합물놀이·테마파크 형태로 운영하는 것에 대해 어떻게 생각하십니까? (통합운영 찬성만 작성)</p>
+                <p style="font-size: 0.85rem; color: #555; margin-top: -6px; margin-bottom: 10px;">[참고] 2026년 여름테마파크 운영기간(2026. 7.18. ~ 8.23.)</p>
+                <label><input type="radio" name="q5_integration_detail" value="현재 수준 유지"> ① 현재 수준 유지</label>
+                <label><input type="radio" name="q5_integration_detail" value="1주일 연장"> ② 1주일 연장</label>
+                <label><input type="radio" name="q5_integration_detail" value="이용수요에 따라 탄력 운영"> ③ 이용수요에 따라 탄력 운영</label>
+            </div>
 
-        <div class="question">
-            <p>&lt;문항6&gt; 여름테마파크와 야외물놀이장의 향후 운영방식에 대한 의견을 자유롭게 작성해 주세요.</p>
-            <textarea name="q6_free_opinion" rows="4" placeholder="의견을 자유롭게 적어주세요."></textarea>
-        </div>
+            <!-- 문항 6 -->
+            <div class="question" style="border-bottom: none;">
+                <p>&lt;문항6&gt; 여름테마파크와 야외물놀이장의 향후 운영방식에 대한 의견을 자유롭게 작성해 주세요.</p>
+                <textarea name="q6_free_opinion" rows="4" placeholder="자유로운 의견을 입력해 주세요. (선택사항)"></textarea>
+            </div>
 
-        <button type="submit">제출하기</button>
-    </form>
+            <button type="submit" id="submitBtn">설문 제출하기</button>
+        </form>
+    </div>
+
+    <!-- 하단 푸터 영역 -->
+    <footer>
+        서산시 여름테마파크 설문조사 시스템 | 운영·관리: 
+        <a href="https://kny-company.com" target="_blank" title="kny company 메인으로 이동">kny company</a>
+    </footer>
 
     <script>
         function toggleQ5() {
-            const q4Value = document.querySelector('input[name="q4_integration"]:checked').value;
+            const q4Radio = document.querySelector('input[name="q4_integration"]:checked');
             const q5Container = document.getElementById('q5_container');
             const q5Radios = document.querySelectorAll('input[name="q5_integration_detail"]');
             
-            if (q4Value === "찬성") {
+            if (q4Radio && q4Radio.value === "찬성") {
                 q5Container.style.display = "block";
-                q5Radios.forEach(radio => radio.required = true); // 찬성일 땐 필수
+                q5Radios.forEach(radio => radio.required = true);
             } else {
                 q5Container.style.display = "none";
                 q5Radios.forEach(radio => {
                     radio.checked = false;
-                    radio.required = false; // 아닐 땐 필수 해제
+                    radio.required = false;
                 });
             }
         }
@@ -89,11 +192,14 @@
         document.getElementById('surveyForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerText = "제출 중...";
+
             const formData = new FormData(this);
             const data = Object.fromEntries(formData.entries());
 
             try {
-                // 수정된 API 경로 호출
                 const response = await fetch('/survey-api/submit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -102,13 +208,17 @@
 
                 const result = await response.json();
                 if(result.success) {
-                    alert("설문이 정상적으로 제출되었습니다. 감사합니다!");
+                    alert("설문이 정상적으로 제출되었습니다. 참여해 주셔서 감사합니다!");
                     window.location.reload();
                 } else {
-                    alert("제출 오류: " + result.error);
+                    alert("제출 중 오류가 발생했습니다: " + (result.error || "다시 시도해 주세요."));
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = "설문 제출하기";
                 }
             } catch(err) {
-                alert("서버와 통신할 수 없습니다.");
+                alert("서버와 통신할 수 없습니다. 인터넷 연결을 확인해 주세요.");
+                submitBtn.disabled = false;
+                submitBtn.innerText = "설문 제출하기";
             }
         });
     </script>
