@@ -192,7 +192,8 @@
         // 피드 데이터를 카드로 그리기
         function renderPortfolios(data) {
             const grid = document.getElementById('portfolio-grid');
-            const entries = (data.feed && data.feed.entry) || [];
+            const entries = ((data.feed && data.feed.entry) || [])
+                .filter(item => (item.category || []).some(c => c.term === PF_LABEL));
 
             if (entries.length === 0) {
                 grid.innerHTML = `<p style="grid-column: 1/-1; color:#95a5a6; padding: 40px 0;">아직 등록된 포트폴리오 실적이 없습니다.</p>`;
