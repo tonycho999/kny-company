@@ -348,7 +348,8 @@
 
     function renderPortfolios(data) {
         const tbody = document.getElementById('pf-tbody');
-        const entries = (data.feed && data.feed.entry) || [];
+        const entries = ((data.feed && data.feed.entry) || [])
+            .filter(item => (item.category || []).some(c => c.term === PF_LABEL));
 
         if (entries.length === 0) {
             tbody.innerHTML = `<tr><td colspan="3" style="padding:30px;">'${PF_LABEL}' 라벨이 달린 게시물이 없습니다.</td></tr>`;
